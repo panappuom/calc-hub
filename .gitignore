@@ -1,0 +1,12 @@
+# Node関連
+node_modules/
+dist/
+.astro/
+.vite/
+
+# エディタ関連
+.vscode/
+.history/
+
+# その他
+.DS_Store

@@ -1,0 +1,114 @@
+---
+import "../styles/global.css";
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>計算機ハブ</title>
+  </head>
+  <body>
+    <div class="wrap">
+      <a href="/" class="small">← 戻る</a>
+      <h1>計算機ハブ</h1>
+      <div class="grid">
+
+        <div class="card">
+          <h2>税込↔税抜</h2>
+          <label>価格</label><input id="p1" type="number" placeholder="1000" />
+          <label>税率(%)</label><input id="t1" type="number" value="10" />
+          <div class="result" id="r1"></div>
+        </div>
+
+        <div class="card">
+          <h2>体積 m³ ↔ L</h2>
+          <label>値</label><input id="p2" type="number" placeholder="1" />
+          <label>単位</label>
+          <select id="u2"><option value="m3">m³</option><option value="l">L</option></select>
+          <div class="result" id="r2"></div>
+        </div>
+
+        <div class="card">
+          <h2>画像 DPI↔px</h2>
+          <label>幅(px)</label><input id="px3" type="number" placeholder="1200" />
+          <label>DPI</label><input id="dpi3" type="number" placeholder="300" />
+          <label>用紙幅(mm)</label><input id="mm3" type="number" placeholder="210" />
+          <div class="result" id="r3"></div>
+        </div>
+
+        <div class="card">
+          <h2>歩数→距離</h2>
+          <label>歩数</label><input id="steps4" type="number" placeholder="7000" />
+          <label>歩幅(cm)</label><input id="stride4" type="number" placeholder="65" />
+          <div class="result" id="r4"></div>
+        </div>
+
+        <div class="card">
+          <h2>熱量 kcal ↔ kJ</h2>
+          <label>値</label><input id="val5" type="number" placeholder="500" />
+          <label>単位</label>
+          <select id="u5"><option value="kcal">kcal</option><option value="kj">kJ</option></select>
+          <div class="result" id="r5"></div>
+        </div>
+
+      </div>
+    </div>
+    <script>
+      const $ = (s) => document.querySelector(s);
+
+      function fmt(n){ return Number.isFinite(n) ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : "-"; }
+
+      // 1 税
+      function calc1(){
+        const p = parseFloat($("#p1").value||"0");
+        const t = parseFloat($("#t1").value||"0")/100;
+        const tax = Math.round(p * t);
+        const inc = Math.round(p + tax);
+        const ex  = Math.round(p / (1+t));
+        $("#r1").textContent = `税込: ${fmt(inc)} / 税抜(逆算): ${fmt(ex)} / 税額: ${fmt(tax)}`;
+      }
+      ["#p1","#t1"].forEach(id=>$(id).addEventListener("input",calc1)); calc1();
+
+      // 2 体積
+      function calc2(){
+        const v = parseFloat($("#p2").value||"0");
+        const u = $("#u2").value;
+        const m3 = u==="m3" ? v : v/1000;
+        const l  = u==="l"  ? v : v*1000;
+        $("#r2").textContent = `${fmt(m3)} m³ / ${fmt(l)} L`;
+      }
+      ["#p2","#u2"].forEach(id=>$(id).addEventListener("input",calc2)); calc2();
+
+      // 3 DPI
+      function calc3(){
+        const px = parseFloat($("#px3").value||"0");
+        const dpi= parseFloat($("#dpi3").value||"0");
+        const mm = parseFloat($("#mm3").value||"0");
+        const inch = mm/25.4;
+        const needPx = Math.round(dpi*inch);
+        const outDpi = (px/inch);
+        $("#r3").textContent = `指定DPIで必要px: ${fmt(needPx)} / 現在のDPI: ${fmt(outDpi)}`;
+      }
+      ["#px3","#dpi3","#mm3"].forEach(id=>$(id).addEventListener("input",calc3)); calc3();
+
+      // 4 歩数
+      function calc4(){
+        const s = parseFloat($("#steps4").value||"0");
+        const cm = parseFloat($("#stride4").value||"0");
+        const m = s * (cm/100);
+        $("#r4").textContent = `${fmt(m)} m / ${(m/1000).toFixed(2)} km`;
+      }
+      ["#steps4","#stride4"].forEach(id=>$(id).addEventListener("input",calc4)); calc4();
+
+      // 5 熱量
+      function calc5(){
+        const v = parseFloat($("#val5").value||"0");
+        const u = $("#u5").value;
+        const kcal = u==="kcal" ? v : v/4.184;
+        const kj   = u==="kj"   ? v : v*4.184;
+        $("#r5").textContent = `${fmt(kcal)} kcal / ${fmt(kj)} kJ`;
+      }
+      ["#val5","#u5"].forEach(id=>$(id).addEventListener("input",calc5)); calc5();
+    </script>
+  </body>
+</html>

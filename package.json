@@ -1,0 +1,14 @@
+{
+  "name": "calc-hub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "pipeline": "node pipelines/run-all.mjs || exit 0"
+  },
+  "dependencies": {
+    "astro": "^4.13.0"
+  }
+}
