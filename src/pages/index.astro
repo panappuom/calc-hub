@@ -1,7 +1,7 @@
 ---
 import "../styles/global.css";
 const tools = [
-  { href: "/calculators", title: "計算機ハブ（税/体積/画像dpi/歩数→距離...）", desc: "完全静的・ノーAPI・壊れにくい常緑装置" }
+  { href: "calculators/", title: "計算機ハブ（税/体積/画像dpi/歩数→距離...）", desc: "完全静的・ノーAPI・壊れにくい常緑装置" }
 ];
 ---
 <html lang="ja">
@@ -9,6 +9,7 @@ const tools = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <title>自動化工場 v0.1</title>
+    <base href={import.meta.env.BASE_URL} />
   </head>
   <body>
     <div class="wrap">
