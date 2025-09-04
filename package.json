@@ -6,7 +6,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "pipeline": "node pipelines/run-all.mjs || exit 0"
+    "pipeline": "node pipelines/run-all.mjs"
   },
   "dependencies": {
     "astro": "^4.13.0",

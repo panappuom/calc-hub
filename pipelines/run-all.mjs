@@ -6,7 +6,7 @@ async function main(){
   const tasks = [
     import(path.join(__dirname, 'rss.mjs')).then(m => m.run())
   ];
-  await Promise.allSettled(tasks);
+  await Promise.all(tasks);
   console.log('[pipeline] all done');
 }
-main().catch(e => { console.error(e); process.exit(0); });
+main().catch(e => { console.error(e); process.exit(1); });
