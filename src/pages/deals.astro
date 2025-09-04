@@ -1,0 +1,30 @@
+---
+import "../styles/global.css";
+import data from "../data/deals.json";
+const items = (data?.items ?? []).slice(0, 100);
+function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <base href={import.meta.env.BASE_URL} />
+    <title>今日のセールまとめ</title>
+  </head>
+  <body>
+    <div class="wrap">
+      <a href="./" class="small">← トップ</a>
+      <h1>今日のセールまとめ</h1>
+      <p class="small">自動更新。合法RSSのみを集約し、タイトル・説明からフィルタしています。</p>
+      <div class="grid" style="margin-top:8px">
+        {items.map((it) => (
+          <a class="card" href={it.link} target="_blank" rel="nofollow noopener">
+            <h2 style="margin:0 0 6px 0">{it.title}</h2>
+            <p class="small" style="margin:0 0 6px 0">{it.source} / {fmt(it.date)}</p>
+            {it.description && <p style="margin:0">{it.description}</p>}
+          </a>
+        ))}
+      </div>
+    </div>
+  </body>
+</html>

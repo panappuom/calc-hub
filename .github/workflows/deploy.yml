@@ -19,7 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm ci
-      # 将来的に自動データ更新を入れるならここで `npm run pipeline`
+      - name: Run pipeline (RSS → deals.json)
+        run: npm run pipeline
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with: { path: "dist" }
@@ -31,5 +32,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
       - id: deployment
         uses: actions/deploy-pages@v4
