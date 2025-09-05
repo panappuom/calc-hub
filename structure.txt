@@ -1,0 +1,26 @@
+auto-factory (ローカル作業用の親フォルダ。名前は任意)
+├─ calc-hub/                # リモート: panappuom/calc-hub（公開URL: /calc-hub/）
+│  ├─ package.json
+│  ├─ astro.config.mjs
+│  ├─ tsconfig.json
+│  ├─ .github/
+│  │  └─ workflows/
+│  │     └─ deploy.yml
+│  ├─ data-sources/
+│  │  └─ rss.json
+│  ├─ pipelines/
+│  │  ├─ run-all.mjs
+│  │  └─ rss.mjs
+│  └─ src/
+│     ├─ data/
+│     │  └─ deals.json
+│     ├─ pages/
+│     │  ├─ index.astro          # BASE_URL対応済
+│     │  ├─ calculators.astro
+│     │  └─ deals.astro
+│     └─ styles/
+│        └─ global.css
+├─ auto-factory-template/   # テンプレ（任意）。リモート: panappuom/auto-factory-template
+│  └─ （calc-hub同等の雛形一式）
+└─ home/                    # ハブ用ローカルフォルダ（名前は任意）
+   └─ （中身は最小サイト） → リモートは **panappuom/auto-factory** に紐付けて公開URLを `/auto-factory/` にする
