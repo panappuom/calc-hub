@@ -1,20 +1,21 @@
 ---
 import "../styles/global.css";
 const tools = [
-  { href: `${import.meta.env.BASE_URL}calculators/`, title: "計算機ハブ（税/体積/画像dpi/歩数→距離...）", desc: "完全静的・ノーAPI・壊れにくい常緑装置" }
+  { href: "calculators/", title: "計算機ハブ", desc: "完全静的・ノーAPI・壊れにくい常緑装置" },
+  { href: "deals/", title: "今日のセールまとめ", desc: "合法RSSを自動集約。毎日自動更新" }
 ];
 ---
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>自動化工場 v0.1</title>
     <base href={import.meta.env.BASE_URL} />
+    <title>自動化工場 v0.1</title>
   </head>
   <body>
     <div class="wrap">
       <h1>自動化工場 v0.1</h1>
-      <p class="small">このリポをテンプレにして複数装置を量産</p>
+      <p class="small">テンプレから装置を量産 → 完全放置で回す。</p>
       <div class="grid" style="margin-top:20px">
         {tools.map(t => (
           <a class="card" href={t.href}>

@@ -1,0 +1,16 @@
+[
+  {
+    "label": "公式セール情報",
+    "url": "https://example.com/feed", 
+    "include": ["セール", "割引", "クーポン", "キャンペーン"],
+    "exclude": ["抽選", "求人", "スポンサー募集"],
+    "limit": 20
+  },
+  {
+    "label": "テック系お得情報",
+    "url": "https://example2.com/feed",
+    "include": ["セール", "値下げ", "タイムセール"],
+    "exclude": ["提供:", "PR:"],
+    "limit": 20
+  }
+]

@@ -17,18 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        with: { node-version: 20 }
       - run: npm ci
-
-      # ★★ ここが無いと deals.json が生成されない
       - name: Run pipeline (RSS → deals.json)
         run: npm run pipeline
-
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
+        with: { path: "dist" }
 
   deploy:
     needs: build
@@ -37,9 +32,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # ★★ これが無いと Pages の設定が立たずに deploy 失敗することがある
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
       - id: deployment
         uses: actions/deploy-pages@v4
