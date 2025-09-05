@@ -1,0 +1,4 @@
+[
+  { "id": "ssd_1tb", "q": "外付けSSD 1TB", "filters": ["USB 3", "1TB"], "brandHints": ["SanDisk", "Crucial", "ADATA"] },
+  { "id": "sd_128", "q": "SDカード 128GB", "filters": ["UHS-I"], "brandHints": ["SanDisk", "Kioxia"] }
+]

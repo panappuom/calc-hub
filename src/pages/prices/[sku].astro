@@ -1,0 +1,52 @@
+---
+import "../../styles/global.css";
+import data from "../../data/prices/today.json";
+import skus from "../../data/skus.json";
+const { sku } = Astro.params;
+const skuInfo = skus.find(s => s.id === sku);
+const priceInfo = data.items.find(i => i.skuId === sku);
+
+export function getStaticPaths() {
+  return skus.map(s => ({ params: { sku: s.id } }));
+}
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <base href={import.meta.env.BASE_URL} />
+    <title>{skuInfo ? skuInfo.q : sku}の価格表</title>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>{skuInfo ? skuInfo.q : sku}</h1>
+      <p class="small">価格・在庫は変動します。リンク先の最新情報をご確認ください。</p>
+      <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
+      {skuInfo && (
+        <div>
+          <h2>仕様</h2>
+          <ul>
+            {skuInfo.filters && <li>フィルタ: {skuInfo.filters.join(', ')}</li>}
+            {skuInfo.brandHints && <li>ブランド候補: {skuInfo.brandHints.join(', ')}</li>}
+          </ul>
+        </div>
+      )}
+      {priceInfo && (
+        <table>
+          <thead>
+            <tr><th>ショップ</th><th>価格</th><th>ポイント倍率</th></tr>
+          </thead>
+          <tbody>
+            {priceInfo.list.map(it => (
+              <tr>
+                <td><a href={it.itemUrl} target="_blank" rel="nofollow noopener">{it.shopName}</a></td>
+                <td>{it.price}円</td>
+                <td>{it.pointRate}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </body>
+</html>

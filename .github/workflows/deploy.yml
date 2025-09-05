@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm ci
-      - name: Run pipeline (RSS → deals.json)
+      - name: Run pipeline
         run: npm run pipeline
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
