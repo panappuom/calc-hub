@@ -1,0 +1,29 @@
+---
+import "../../styles/global.css";
+import data from "../../data/prices/today.json";
+import skus from "../../data/skus.json";
+const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <base href={import.meta.env.BASE_URL} />
+    <title>今日の最安値ランキング</title>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>今日の最安値ランキング</h1>
+      <p class="small">価格・在庫は変動します。リンク先の最新情報をご確認ください。</p>
+      <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
+      <ul>
+        {data.items.map(it => (
+          <li>
+            <a href={`./${it.skuId}/`}>{skuMap[it.skuId]?.q ?? it.skuId}</a>
+            : {it.bestPrice}円 ({it.bestShop})
+          </li>
+        ))}
+      </ul>
+    </div>
+  </body>
+</html>
