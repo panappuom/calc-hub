@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/package.json", 
   "name": "calc-hub",
   "private": true,
   "type": "module",
@@ -6,10 +7,12 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "pipeline": "node pipelines/run-all.mjs"
+    "pipeline": "node pipelines/run-all.mjs",
+    "test": "echo \"no tests yet\" && exit 0"
   },
   "dependencies": {
     "astro": "^4.13.0",
     "fast-xml-parser": "^5.2.5"
   }
+  
 }
