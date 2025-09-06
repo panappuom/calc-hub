@@ -5,19 +5,19 @@ const tools = [
     href: "calculators/",
     title: "計算機ハブ",
     desc: "完全静的・ノーAPI・壊れにくい常緑装置",
-    btn: "計算する",
+    cta: "計算する",
   },
   {
     href: "deals/",
     title: "今日のセールまとめ",
-    desc: "合法RSSを自動集約。毎日自動更新",
-    btn: "今日のお得を見る",
+    desc: "セール・割引情報を毎日自動で収集（公式ソースのみ）",
+    cta: "今日のお得を見る",
   },
   {
     href: "prices/",
-    title: "今日の最安値",
-    desc: "楽天市場の価格トラッカー",
-    btn: "開く",
+    title: "今日の最安“候補”",
+    desc: "楽天市場の価格トラッカー（取得時点の参考価格）",
+    cta: "開く",
   },
 ];
 ---
@@ -26,17 +26,20 @@ const tools = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <base href={import.meta.env.BASE_URL} />
-    <title>自動化工場 v0.1</title>
+    <title>買う前の1分チェック。</title>
   </head>
   <body>
     <div class="wrap">
       <h1>買う前の1分チェック。</h1>
-      <p class="small">よく使う計算機と、今日のお得情報をシンプルに。毎日自動更新／公式ソースのみ。価格は取得時点の参考値です。</p>
+      <p class="small">
+        よく使う計算機と、今日のお得情報をシンプルに。毎日自動更新／公式ソースのみ。価格は取得時点の参考値です。
+      </p>
+      <div class="grid" style="margin-top:20px">
         {tools.map(t => (
           <a class="card" href={t.href}>
             <h2>{t.title}</h2>
             <p>{t.desc}</p>
-            <span class="btn">{t.btn}</span>
+            <span class="btn">{t.cta ?? "開く"}</span>
           </a>
         ))}
       </div>
