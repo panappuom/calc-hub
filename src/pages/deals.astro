@@ -15,7 +15,7 @@ function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
     <div class="wrap">
       <a href="./" class="small">← トップ</a>
       <h1>今日のセール・割引まとめ</h1>
-      <p class="small">主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は機械で除外。</p>
+      <p class="small">主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は除外。</p>
       <div class="grid" style="margin-top:8px">
         {items.map((it) => (
           <a class="card" href={it.link} target="_blank" rel="nofollow noopener">
