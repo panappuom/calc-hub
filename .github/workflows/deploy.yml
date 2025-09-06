@@ -1,4 +1,4 @@
-name: build-and-deploy
+name: CI
 on:
   push:
     branches: [ main ]
@@ -12,7 +12,8 @@ permissions:
   id-token: write
 
 jobs:
-  build:
+  test-build:
+    name: test-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +27,7 @@ jobs:
         with: { path: "dist" }
 
   deploy:
-    needs: build
+    needs: test-build
     runs-on: ubuntu-latest
     environment:
       name: github-pages

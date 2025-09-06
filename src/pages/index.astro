@@ -10,10 +10,15 @@ const tools = [
   {
     href: "deals/",
     title: "今日のセールまとめ",
-    desc: "合法RSSを自動集約。毎日自動更新",
+    desc: "セール・割引情報を毎日自動で収集（公式ソースのみ）",
     cta: "今日のお得を見る",
   },
-  { href: "prices/", title: "今日の最安値", desc: "楽天市場の価格トラッカー" },
+  {
+    href: "prices/",
+    title: "今日の最安“候補”",
+    desc: "楽天市場の価格トラッカー（取得時点の参考価格）",
+    cta: "開く",
+  },
 ];
 ---
 <html lang="ja">
@@ -21,13 +26,13 @@ const tools = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <base href={import.meta.env.BASE_URL} />
-    <title>便利ツールと、今日のお得。</title>
+    <title>買う前の1分チェック。</title>
   </head>
   <body>
     <div class="wrap">
-      <h1>便利ツールと、今日のお得。</h1>
+      <h1>買う前の1分チェック。</h1>
       <p class="small">
-        よく使う計算機と、最新のセール情報をシンプルに紹介します。更新は自動／公式ソースのみ。
+        よく使う計算機と、今日のお得情報をシンプルに。毎日自動更新／公式ソースのみ。価格は取得時点の参考値です。
       </p>
       <div class="grid" style="margin-top:20px">
         {tools.map(t => (
