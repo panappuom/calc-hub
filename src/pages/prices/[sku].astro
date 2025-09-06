@@ -20,7 +20,7 @@ export function getStaticPaths() {
   <body>
     <div class="wrap">
       <h1>{skuInfo ? skuInfo.q : sku}</h1>
-      <p class="small">価格・在庫は変動します。リンク先の最新情報をご確認ください。</p>
+      <p>ショップ別の価格を一覧しています。並び順は目安（価格・ポイント相当）です。</p>
       <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
       {skuInfo && (
         <div>
@@ -32,20 +32,23 @@ export function getStaticPaths() {
         </div>
       )}
       {priceInfo && (
-        <table>
-          <thead>
-            <tr><th>ショップ</th><th>価格</th><th>ポイント倍率</th></tr>
-          </thead>
-          <tbody>
-            {priceInfo.list.map(it => (
-              <tr>
-                <td><a href={it.itemUrl} target="_blank" rel="nofollow noopener">{it.shopName}</a></td>
-                <td>{it.price}円</td>
-                <td>{it.pointRate}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <table>
+            <thead>
+              <tr><th>ショップ</th><th>価格</th><th>ポイント倍率</th></tr>
+            </thead>
+            <tbody>
+              {priceInfo.list.map(it => (
+                <tr>
+                  <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
+                  <td>{it.price}円</td>
+                  <td>{it.pointRate}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p class="small">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
+        </>
       )}
     </div>
   </body>
