@@ -68,6 +68,12 @@ export async function run() {
 
   if (successCount === 0) {
     console.warn('[prices] all fetches failed, keep previous data');
+    try {
+      await fs.mkdir(publicHistoryDir, { recursive: true });
+      await fs.cp(historyDir, publicHistoryDir, { recursive: true });
+    } catch (e) {
+      console.warn('[prices] failed to mirror history', e);
+    }
     return;
   }
 
