@@ -23,6 +23,8 @@ jobs:
       - run: npm ci
       - name: Run pipelines (rss, prices-rakuten)
         run: npm run pipeline
+        env:
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with: { path: "dist" }
