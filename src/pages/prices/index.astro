@@ -1,7 +1,14 @@
 ---
 import "../../styles/global.css";
-import data from "../../data/prices/today.json";
 import skus from "../../data/skus.json";
+const base = import.meta.env.BASE_URL;
+let data;
+try {
+  const res = await fetch(`${base}data/prices/today.json`);
+  if (res.ok) {
+    data = await res.json();
+  }
+} catch {}
 const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
 ---
 <html lang="ja">
@@ -17,15 +24,21 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
       <h1>今日の最安“候補”</h1>
       <p class="small">対象カテゴリから毎日、自動で候補を抽出し、価格とポイント相当を目安に並べ替えています。</p>
       <p class="small">表示価格は取得時点の参考値です。購入前に必ずリンク先の最新情報をご確認ください。</p>
-      <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
-      <ul>
-        {data.items.map(it => (
-          <li>
-            <a href={`prices/${it.skuId}/`}>{skuMap[it.skuId]?.q ?? it.skuId}</a>
-            : {it.bestPrice}円 ({it.bestShop})
-          </li>
-        ))}
-      </ul>
+      {data ? (
+        <>
+          <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
+          <ul>
+            {data.items.map(it => (
+              <li>
+                <a href={`prices/${it.skuId}/`}>{skuMap[it.skuId]?.q ?? it.skuId}</a>
+                : {it.bestPrice}円 ({it.bestShop})
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p class="small">データ少</p>
+      )}
     </div>
   </body>
 </html>

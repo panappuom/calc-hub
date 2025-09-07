@@ -1,10 +1,17 @@
 ---
 import "../../styles/global.css";
-import data from "../../data/prices/today.json";
 import skus from "../../data/skus.json";
+const base = import.meta.env.BASE_URL;
+let data;
+try {
+  const res = await fetch(`${base}data/prices/today.json`);
+  if (res.ok) {
+    data = await res.json();
+  }
+} catch {}
 const { sku } = Astro.params;
 const skuInfo = skus.find(s => s.id === sku);
-const priceInfo = data.items.find(i => i.skuId === sku);
+const priceInfo = data?.items.find(i => i.skuId === sku);
 
 export function getStaticPaths() {
   return skus.map(s => ({ params: { sku: s.id } }));
@@ -22,7 +29,9 @@ export function getStaticPaths() {
         <a href="./" class="small">← トップ</a>
       <h1>{skuInfo ? skuInfo.q : sku} – 価格一覧</h1>
       <p>ショップ別の価格を一覧しています。並び順は目安（価格・ポイント相当）です。</p>
-      <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
+      <p class="small">
+        {data ? `取得日時: ${new Date(data.updatedAt).toLocaleString('ja-JP')}` : 'データ少'}
+      </p>
       {skuInfo && (
         <div>
           <h2>仕様</h2>
@@ -32,7 +41,7 @@ export function getStaticPaths() {
           </ul>
         </div>
       )}
-      {priceInfo && (
+      {priceInfo ? (
         <>
           <table>
             <thead>
@@ -49,43 +58,45 @@ export function getStaticPaths() {
             </tbody>
           </table>
           <p class="small">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
-          <h2>価格推移 (30日)</h2>
-          <canvas id="chart" width="600" height="200" data-sku={sku}></canvas>
-          <p id="chart-msg" class="small"></p>
-          <p class="small">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
-          <script>
-            const canvas = document.getElementById('chart');
-            const sku = canvas.dataset.sku;
-            const msg = document.getElementById('chart-msg');
-            const base = document.baseURI;
-            fetch(`${base}data/price-history/${sku}.json?t=${Date.now()}`).then(r => r.json()).then(hist => {
-              const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
-              const data = list.filter(d => Number.isFinite(d.price)).slice(-30);
-              if (data.length < 2) {
-                canvas.style.display = 'none';
-                msg.textContent = 'データ少';
-                return;
-              }
-              const ctx = canvas.getContext('2d');
-              const prices = data.map(d => d.price);
-              const min = Math.min(...prices);
-              const max = Math.max(...prices);
-              const range = max - min || 1;
-              ctx.beginPath();
-              data.forEach((p, i) => {
-                const x = i * (canvas.width / (data.length - 1));
-                const y = canvas.height - (p.price - min) / range * canvas.height;
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-              });
-              ctx.strokeStyle = '#0070f3';
-              ctx.stroke();
-            }).catch(() => {
-              canvas.style.display = 'none';
-              msg.textContent = 'データ少';
-            });
-          </script>
         </>
+      ) : (
+        <p class="small">データ少</p>
       )}
+      <h2>価格推移 (30日)</h2>
+      <canvas id="chart" width="600" height="200" data-sku={sku} data-base={import.meta.env.BASE_URL}></canvas>
+      <p id="chart-msg" class="small"></p>
+      <p class="small">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
+      <script>
+        const canvas = document.getElementById('chart');
+        const sku = canvas.dataset.sku;
+        const msg = document.getElementById('chart-msg');
+        const base = canvas.dataset.base;
+        fetch(`${base}data/price-history/${sku}.json?t=${Date.now()}`).then(r => r.json()).then(hist => {
+          const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
+          const data = list.filter(d => Number.isFinite(d.price)).slice(-30);
+          if (data.length < 2) {
+            canvas.style.display = 'none';
+            msg.textContent = 'データ少';
+            return;
+          }
+          const ctx = canvas.getContext('2d');
+          const prices = data.map(d => d.price);
+          const min = Math.min(...prices);
+          const max = Math.max(...prices);
+          const range = max - min || 1;
+          ctx.beginPath();
+          data.forEach((p, i) => {
+            const x = i * (canvas.width / (data.length - 1));
+            const y = canvas.height - (p.price - min) / range * canvas.height;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.strokeStyle = '#0070f3';
+          ctx.stroke();
+        }).catch(() => {
+          canvas.style.display = 'none';
+          msg.textContent = 'データ少';
+        });
+      </script>
     </div>
   </body>
 </html>
