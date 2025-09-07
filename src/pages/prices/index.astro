@@ -20,7 +20,7 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
       <ul>
         {data.items.map(it => (
           <li>
-            <a href={`./${it.skuId}/`}>{skuMap[it.skuId]?.q ?? it.skuId}</a>
+            <a href={`prices/${it.skuId}/`}>{skuMap[it.skuId]?.q ?? it.skuId}</a>
             : {it.bestPrice}円 ({it.bestShop})
           </li>
         ))}
