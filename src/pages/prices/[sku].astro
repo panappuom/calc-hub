@@ -58,14 +58,14 @@ export function getStaticPaths() {
             const sku = canvas.dataset.sku;
             const msg = document.getElementById('chart-msg');
             const base = document.baseURI;
-            fetch(new URL(`data/price-history/${sku}.json`, base)).then(r => r.json()).then(hist => {
+            fetch(`${base}data/price-history/${sku}.json?t=${Date.now()}`).then(r => r.json()).then(hist => {
               const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
-              if (list.length < 2) {
+              const data = list.filter(d => Number.isFinite(d.price)).slice(-30);
+              if (data.length < 2) {
                 canvas.style.display = 'none';
                 msg.textContent = 'データ少';
                 return;
               }
-              const data = list.slice(-30);
               const ctx = canvas.getContext('2d');
               const prices = data.map(d => d.price);
               const min = Math.min(...prices);
