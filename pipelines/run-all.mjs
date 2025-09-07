@@ -25,8 +25,8 @@ async function main(){
   try {
     await exec('git config user.name "github-actions[bot]"');
     await exec('git config user.email "41898282+github-actions[bot]@users.noreply.github.com"');
-    await exec('git add data src/data/prices/today.json');
-    const { stdout } = await exec('git status --short data src/data/prices/today.json');
+    await exec('git add data public src/data/prices/today.json');
+    const { stdout } = await exec('git status --short data public src/data/prices/today.json');
     if (stdout.trim()) {
       await exec('git commit -m "chore(history): update prices [skip ci]"');
       await exec('git push');
