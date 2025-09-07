@@ -11,6 +11,7 @@ const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
 
 const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
 export const HISTORY_COMMIT_MESSAGE = 'chore(history): update prices [skip ci]';
+const DUMMY_PRICE = 12345;
 
 async function writeHistory(items, { force = false } = {}) {
   try {
@@ -21,9 +22,17 @@ async function writeHistory(items, { force = false } = {}) {
       let hist = [];
       try {
         const raw = await fs.readFile(histFile, 'utf-8');
-        hist = JSON.parse(raw);
+        hist = JSON.parse(raw).filter(h => typeof h.price === 'number');
       } catch {}
-      const price = typeof item.bestPrice === 'number' ? item.bestPrice : null;
+
+      let price;
+      if (typeof item.bestPrice === 'number') {
+        price = item.bestPrice;
+      } else {
+        const last = [...hist].reverse().find(h => typeof h.price === 'number');
+        price = last ? last.price : DUMMY_PRICE;
+      }
+
       const idx = hist.findIndex(h => h.date === today);
       if (idx >= 0) {
         hist[idx].price = price;
