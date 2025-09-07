@@ -46,22 +46,23 @@ async function writeHistory(items, { force = false } = {}) {
     await fs.mkdir(publicHistoryDir, { recursive: true });
     await fs.cp(historyDir, publicHistoryDir, { recursive: true });
   } catch (e) {
-    console.warn('[prices] failed to update history', e);
+    console.warn('[rakuten] failed to update history', e);
   }
 }
 
 export async function run() {
   const appId = process.env.RAKUTEN_APP_ID;
+  console.log(`[rakuten] appId: ${appId ? 'detected' : 'missing'}`);
   let skus = [];
   try {
     const raw = await fs.readFile(skuPath, 'utf-8');
     skus = JSON.parse(raw);
   } catch (e) {
-    console.error('[prices] failed to read skus.json', e);
+    console.error('[rakuten] failed to read skus.json', e);
     return;
   }
   if (!appId) {
-    console.warn('[prices] RAKUTEN_APP_ID is missing, insert dummy history');
+    console.warn('[rakuten] RAKUTEN_APP_ID is missing, insert dummy history');
     const dummy = skus.map(s => ({ skuId: s.id, bestPrice: null }));
     await writeHistory(dummy, { force: true });
     return;
@@ -104,26 +105,43 @@ export async function run() {
         list: filtered
       });
     } catch (e) {
-      console.error('[prices] sku failed', sku.id, e);
+      console.error('[rakuten] sku failed', sku.id, e);
       items.push({ skuId: sku.id, bestPrice: null, bestShop: null, list: [] });
     }
   }
 
   if (successCount === 0) {
-    console.warn('[prices] all fetches failed, keep previous data');
+    console.warn('[rakuten] all fetches failed, keep previous data');
+    let out = { updatedAt: new Date().toISOString(), items: [] };
+    try {
+      const raw = await fs.readFile(outPath, 'utf-8');
+      out = JSON.parse(raw);
+    } catch {}
+    out.sourceStatus = { ...(out.sourceStatus || {}), rakuten: 'fail' };
+    try {
+      await fs.mkdir(path.dirname(outPath), { recursive: true });
+      await fs.writeFile(outPath, JSON.stringify(out, null, 2));
+    } catch (e) {
+      console.warn('[rakuten] failed to write today.json', e);
+    }
     try {
       await fs.mkdir(publicHistoryDir, { recursive: true });
       await fs.cp(historyDir, publicHistoryDir, { recursive: true });
     } catch (e) {
-      console.warn('[prices] failed to mirror history', e);
+      console.warn('[rakuten] failed to mirror history', e);
     }
     return;
   }
 
-  const out = { updatedAt: new Date().toISOString(), items };
+  const status = successCount === skus.length ? 'ok' : 'partial';
+  const out = { updatedAt: new Date().toISOString(), items, sourceStatus: { rakuten: status } };
   await fs.mkdir(path.dirname(outPath), { recursive: true });
   await fs.writeFile(outPath, JSON.stringify(out, null, 2));
-  console.log('[prices] wrote', outPath);
+  console.log('[rakuten] wrote', outPath);
+
+  const validated = items.filter(it => typeof it.bestPrice === 'number').length;
+  const skipped = items.length - validated;
+  console.log(`[rakuten] validated ${validated}, skipped ${skipped}`);
 
   await writeHistory(items);
 }
