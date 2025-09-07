@@ -4,11 +4,26 @@ import { run as runRss } from './rss.mjs';
 import { run as runPrices, HISTORY_COMMIT_MESSAGE } from './prices-rakuten.mjs';
 const exec = promisify(execCb);
 
+async function runWithLog(name, fn) {
+  console.log(`[pipeline] start ${name}`);
+  try {
+    await fn();
+    console.log(`[pipeline] end ${name}`);
+  } catch (e) {
+    console.error(`[pipeline] ${name} failed`, e);
+    throw e;
+  }
+}
+
 async function main(){
   const tasks = [
-    runRss(),
-    runPrices(),
+    runWithLog('rss', runRss),
   ];
+  if (process.env.RAKUTEN_APP_ID) {
+    tasks.push(runWithLog('prices-rakuten', runPrices));
+  } else {
+    console.log('[pipeline] skip prices-rakuten: RAKUTEN_APP_ID not set');
+  }
   const results = await Promise.allSettled(tasks);
   let hasFailure = false;
   results.forEach(r => {
