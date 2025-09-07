@@ -1,0 +1,54 @@
+name: Ensure auto-merge for Codex PRs
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  pull-requests: write   # Auto-mergeのONに必要
+  issues: write          # ラベルの作成/付与に必要
+  contents: read
+
+jobs:
+  ensure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure 'automerge' label exists
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const name = 'automerge';
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner, repo, name,
+                color: '2ea043',
+                description: 'Enable auto-merge (squash) automatically'
+              });
+            }
+
+      - name: Auto-label PR with 'automerge' if it is a Codex or owner PR
+        if: |
+          startsWith(github.event.pull_request.head.ref, 'codex/') ||
+          github.event.pull_request.user.login == github.repository_owner
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const labels = (context.payload.pull_request.labels || []).map(l => l.name);
+            if (!labels.includes('automerge')) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number, labels: ['automerge']
+              });
+            }
+
+      - name: Enable auto-merge (squash) when labeled 'automerge'
+        if: contains(join(github.event.pull_request.labels.*.name, ','), 'automerge') ||
+            steps.ensure.outputs.added == 'true'
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          merge-method: SQUASH
