@@ -49,6 +49,36 @@ export function getStaticPaths() {
             </tbody>
           </table>
           <p class="small">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
+          <h2>価格推移 (30日)</h2>
+          <canvas id="chart" width="600" height="200"></canvas>
+          <p id="chart-msg" class="small"></p>
+          <p class="small">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
+          <script>
+            const sku = {JSON.stringify(sku)};
+            fetch(`data/price-history/${sku}.json`).then(r => r.json()).then(hist => {
+              if (!Array.isArray(hist) || hist.length < 2) {
+                document.getElementById('chart-msg').textContent = 'データ少';
+                return;
+              }
+              const data = hist.slice(-30);
+              const canvas = document.getElementById('chart');
+              const ctx = canvas.getContext('2d');
+              const prices = data.map(d => d.price);
+              const min = Math.min(...prices);
+              const max = Math.max(...prices);
+              const range = max - min || 1;
+              ctx.beginPath();
+              data.forEach((p, i) => {
+                const x = i * (canvas.width / (data.length - 1));
+                const y = canvas.height - (p.price - min) / range * canvas.height;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+              });
+              ctx.strokeStyle = '#0070f3';
+              ctx.stroke();
+            }).catch(() => {
+              document.getElementById('chart-msg').textContent = 'データ少';
+            });
+          </script>
         </>
       )}
     </div>

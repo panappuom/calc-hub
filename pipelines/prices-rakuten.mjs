@@ -6,6 +6,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 const skuPath = path.join(rootDir, 'src', 'data', 'skus.json');
 const outPath = path.join(rootDir, 'src', 'data', 'prices', 'today.json');
+const historyDir = path.join(rootDir, 'data', 'price-history');
+const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
 
 export async function run() {
   const appId = process.env.RAKUTEN_APP_ID;
@@ -23,6 +25,7 @@ export async function run() {
   }
 
   const items = [];
+  let successCount = 0;
   for (const sku of skus) {
     try {
       const url = new URL('https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601');
@@ -50,6 +53,7 @@ export async function run() {
       }));
       filtered.sort((a, b) => (a.price - a.price * a.pointRate / 100) - (b.price - b.price * b.pointRate / 100));
       const best = filtered[0];
+      if (best) successCount++;
       items.push({
         skuId: sku.id,
         bestPrice: best?.price ?? null,
@@ -62,8 +66,40 @@ export async function run() {
     }
   }
 
+  if (successCount === 0) {
+    console.warn('[prices] all fetches failed, keep previous data');
+    return;
+  }
+
   const out = { updatedAt: new Date().toISOString(), items };
   await fs.mkdir(path.dirname(outPath), { recursive: true });
   await fs.writeFile(outPath, JSON.stringify(out, null, 2));
   console.log('[prices] wrote', outPath);
+
+  try {
+    await fs.mkdir(historyDir, { recursive: true });
+    const today = new Date().toISOString().slice(0, 10);
+    for (const item of items) {
+      if (typeof item.bestPrice !== 'number') continue;
+      const histFile = path.join(historyDir, `${item.skuId}.json`);
+      let hist = [];
+      try {
+        const raw = await fs.readFile(histFile, 'utf-8');
+        hist = JSON.parse(raw);
+      } catch {}
+      const idx = hist.findIndex(h => h.date === today);
+      if (idx >= 0) {
+        hist[idx].price = item.bestPrice;
+      } else {
+        hist.push({ date: today, price: item.bestPrice });
+      }
+      hist.sort((a, b) => a.date.localeCompare(b.date));
+      if (hist.length > 30) hist = hist.slice(-30);
+      await fs.writeFile(histFile, JSON.stringify(hist, null, 2));
+    }
+    await fs.mkdir(publicHistoryDir, { recursive: true });
+    await fs.cp(historyDir, publicHistoryDir, { recursive: true });
+  } catch (e) {
+    console.warn('[prices] failed to update history', e);
+  }
 }
