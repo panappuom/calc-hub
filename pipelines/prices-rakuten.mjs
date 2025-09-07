@@ -9,18 +9,51 @@ const outPath = path.join(rootDir, 'src', 'data', 'prices', 'today.json');
 const historyDir = path.join(rootDir, 'data', 'price-history');
 const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
 
+const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+
+async function writeHistory(items, { force = false } = {}) {
+  try {
+    await fs.mkdir(historyDir, { recursive: true });
+    for (const item of items) {
+      if (!force && typeof item.bestPrice !== 'number') continue;
+      const histFile = path.join(historyDir, `${item.skuId}.json`);
+      let hist = [];
+      try {
+        const raw = await fs.readFile(histFile, 'utf-8');
+        hist = JSON.parse(raw);
+      } catch {}
+      const price = typeof item.bestPrice === 'number' ? item.bestPrice : null;
+      const idx = hist.findIndex(h => h.date === today);
+      if (idx >= 0) {
+        hist[idx].price = price;
+      } else {
+        hist.push({ date: today, price });
+      }
+      hist.sort((a, b) => a.date.localeCompare(b.date));
+      if (hist.length > 30) hist = hist.slice(-30);
+      await fs.writeFile(histFile, JSON.stringify(hist, null, 2));
+    }
+    await fs.mkdir(publicHistoryDir, { recursive: true });
+    await fs.cp(historyDir, publicHistoryDir, { recursive: true });
+  } catch (e) {
+    console.warn('[prices] failed to update history', e);
+  }
+}
+
 export async function run() {
   const appId = process.env.RAKUTEN_APP_ID;
-  if (!appId) {
-    console.warn('[prices] RAKUTEN_APP_ID is missing');
-    return;
-  }
   let skus = [];
   try {
     const raw = await fs.readFile(skuPath, 'utf-8');
     skus = JSON.parse(raw);
   } catch (e) {
     console.error('[prices] failed to read skus.json', e);
+    return;
+  }
+  if (!appId) {
+    console.warn('[prices] RAKUTEN_APP_ID is missing, insert dummy history');
+    const dummy = skus.map(s => ({ skuId: s.id, bestPrice: null }));
+    await writeHistory(dummy, { force: true });
     return;
   }
 
@@ -82,30 +115,5 @@ export async function run() {
   await fs.writeFile(outPath, JSON.stringify(out, null, 2));
   console.log('[prices] wrote', outPath);
 
-  try {
-    await fs.mkdir(historyDir, { recursive: true });
-    const today = new Date().toISOString().slice(0, 10);
-    for (const item of items) {
-      if (typeof item.bestPrice !== 'number') continue;
-      const histFile = path.join(historyDir, `${item.skuId}.json`);
-      let hist = [];
-      try {
-        const raw = await fs.readFile(histFile, 'utf-8');
-        hist = JSON.parse(raw);
-      } catch {}
-      const idx = hist.findIndex(h => h.date === today);
-      if (idx >= 0) {
-        hist[idx].price = item.bestPrice;
-      } else {
-        hist.push({ date: today, price: item.bestPrice });
-      }
-      hist.sort((a, b) => a.date.localeCompare(b.date));
-      if (hist.length > 30) hist = hist.slice(-30);
-      await fs.writeFile(histFile, JSON.stringify(hist, null, 2));
-    }
-    await fs.mkdir(publicHistoryDir, { recursive: true });
-    await fs.cp(historyDir, publicHistoryDir, { recursive: true });
-  } catch (e) {
-    console.warn('[prices] failed to update history', e);
-  }
+  await writeHistory(items);
 }
