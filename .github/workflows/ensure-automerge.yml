@@ -1,18 +1,19 @@
-name: Ensure auto-merge for Codex PRs
+name: Ensure auto-merge for owner/Codex PRs
 
 on:
   pull_request_target:
-    types: [opened, reopened, synchronize, labeled]
+    types: [opened, reopened, synchronize, labeled, ready_for_review]
 
 permissions:
-  pull-requests: write   # Auto-mergeのONに必要
-  issues: write          # ラベルの作成/付与に必要
+  pull-requests: write
+  issues: write
   contents: read
 
 jobs:
   ensure:
     runs-on: ubuntu-latest
     steps:
+      # ラベルが無ければ作成
       - name: Ensure 'automerge' label exists
         uses: actions/github-script@v7
         with:
@@ -29,25 +30,40 @@ jobs:
               });
             }
 
-      - name: Auto-label PR with 'automerge' if it is a Codex or owner PR
-        if: |
-          startsWith(github.event.pull_request.head.ref, 'codex/') ||
-          github.event.pull_request.user.login == github.repository_owner
+      # Codex 由来ブランチ or リポ所有者の PR に自動ラベル付与
+      - id: auto_label
+        name: Auto-label 'automerge' when PR is owner or codex/*
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const issue_number = pr.number;
+            const isOwner = pr.user.login === context.payload.repository.owner.login;
+            const isCodex = pr.head.ref && pr.head.ref.startsWith('codex/');
+            const labels = (pr.labels || []).map(l => l.name);
+            if ((isOwner || isCodex) && !labels.includes('automerge')) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number, labels: ['automerge'] });
+              core.setOutput('labeled', 'true');
+            } else {
+              core.setOutput('labeled', 'false');
+            }
+
+      # 直近のラベル状態を API で取り直す（同一ランでも確実に反映）
+      - id: get_labels
+        name: Get current labels
         uses: actions/github-script@v7
         with:
           script: |
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
-            const labels = (context.payload.pull_request.labels || []).map(l => l.name);
-            if (!labels.includes('automerge')) {
-              await github.rest.issues.addLabels({
-                owner, repo, issue_number, labels: ['automerge']
-              });
-            }
+            const { data } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number });
+            core.setOutput('list', data.map(l => l.name).join(','));
 
-      - name: Enable auto-merge (squash) when labeled 'automerge'
-        if: contains(join(github.event.pull_request.labels.*.name, ','), 'automerge') ||
-            steps.ensure.outputs.added == 'true'
+      # Draft のままだと有効化に失敗するため、Draft解除イベントでも再試行されるよう上の types に ready_for_review を追加済み
+      # ここでは Draft でない時だけ有効化を試みる
+      - name: Enable auto-merge (squash)
+        if: contains(steps.get_labels.outputs.list, 'automerge') && (github.event.pull_request.draft == false)
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
