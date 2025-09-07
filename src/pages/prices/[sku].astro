@@ -19,6 +19,7 @@ export function getStaticPaths() {
   </head>
   <body>
     <div class="wrap">
+        <a href="./" class="small">← トップ</a>
       <h1>{skuInfo ? skuInfo.q : sku} – 価格一覧</h1>
       <p>ショップ別の価格を一覧しています。並び順は目安（価格・ポイント相当）です。</p>
       <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
