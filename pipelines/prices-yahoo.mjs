@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 const skuPath = path.join(rootDir, 'src', 'data', 'skus.json');
-const outPath = path.join(rootDir, 'src', 'data', 'prices', 'rakuten.json');
+const outPath = path.join(rootDir, 'src', 'data', 'prices', 'yahoo.json');
 
 async function fetchJsonWithRetry(url) {
   let delay = 500;
@@ -32,7 +32,7 @@ async function loadPrev() {
 }
 
 export async function run() {
-  const appId = process.env.RAKUTEN_APP_ID;
+  const appId = process.env.YAHOO_APP_ID;
   let skus = [];
   try {
     const raw = await fs.readFile(skuPath, 'utf-8');
@@ -43,7 +43,7 @@ export async function run() {
   }
 
   if (!appId) {
-    console.warn('[prices] RAKUTEN_APP_ID is missing');
+    console.warn('[prices] YAHOO_APP_ID is missing');
     const prev = (await loadPrev()) ?? { updatedAt: new Date().toISOString(), items: [], status: 'fail' };
     prev.status = 'fail';
     await fs.mkdir(path.dirname(outPath), { recursive: true });
@@ -55,29 +55,26 @@ export async function run() {
   let success = 0;
   for (const sku of skus) {
     try {
-      const url = new URL('https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601');
-      url.searchParams.set('format', 'json');
-      url.searchParams.set('applicationId', appId);
-      url.searchParams.set('keyword', sku.q);
+      const url = new URL('https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch');
+      url.searchParams.set('appid', appId);
+      url.searchParams.set('query', sku.q);
       url.searchParams.set('hits', '30');
 
       const data = await fetchJsonWithRetry(url);
-      const candidates = (data.Items || []).map(it => it.Item);
+      const candidates = data.hits || [];
       const filtered = candidates
         .filter(it => {
-          const title = it.itemName?.toLowerCase() || '';
+          const title = it.name?.toLowerCase() || '';
           if (sku.filters && sku.filters.some(f => !title.includes(f.toLowerCase()))) return false;
           if (sku.brandHints && !sku.brandHints.some(b => title.includes(b.toLowerCase()))) return false;
           return true;
         })
         .map(it => ({
-          title: it.itemName,
-          shopName: it.shopName,
-          itemUrl: it.itemUrl,
-          price: Number(it.itemPrice),
-          pointRate: Number(it.pointRate) || 0,
-          imageUrl: it.mediumImageUrls?.[0]?.imageUrl,
-          itemCode: it.itemCode,
+          title: it.name,
+          shopName: it.seller?.name,
+          itemUrl: it.url,
+          price: Number(it.price),
+          pointRate: Number(it.point?.pointRate) || 0,
         }));
       filtered.sort((a, b) => (a.price - (a.price * a.pointRate) / 100) - (b.price - (b.price * b.pointRate) / 100));
       const best = filtered[0];
@@ -89,7 +86,7 @@ export async function run() {
         list: filtered,
       });
     } catch (e) {
-      console.error('[prices] sku failed', sku.id, e);
+      console.error('[prices] yahoo sku failed', sku.id, e);
       items.push({ skuId: sku.id, bestPrice: null, bestShop: null, list: [] });
     }
   }

@@ -1,0 +1,38 @@
+{
+  "updatedAt": "1970-01-01T00:00:00.000Z",
+  "status": "ok",
+  "items": [
+    {
+      "skuId": "ssd_1tb",
+      "bestPrice": 10000,
+      "bestShop": "Dummy Shop",
+      "list": [
+        {
+          "title": "SanDisk 1TB SSD",
+          "shopName": "Dummy Shop",
+          "itemUrl": "https://example.com/ssd",
+          "price": 10000,
+          "pointRate": 0,
+          "imageUrl": "https://example.com/ssd.jpg",
+          "itemCode": "dummy1"
+        }
+      ]
+    },
+    {
+      "skuId": "sd_128",
+      "bestPrice": 2000,
+      "bestShop": "Example Store",
+      "list": [
+        {
+          "title": "SanDisk 128GB SD",
+          "shopName": "Example Store",
+          "itemUrl": "https://example.com/sd",
+          "price": 2000,
+          "pointRate": 0,
+          "imageUrl": "https://example.com/sd.jpg",
+          "itemCode": "dummy2"
+        }
+      ]
+    }
+  ]
+}

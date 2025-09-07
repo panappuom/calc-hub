@@ -1,37 +1,65 @@
 {
-  "updatedAt": "1970-01-01T00:00:00.000Z",
+  "updatedAt": "2025-09-07T09:32:57.091Z",
+  "sourceStatus": {
+    "rakuten": "ok",
+    "yahoo": "ok"
+  },
   "items": [
     {
       "skuId": "ssd_1tb",
-      "bestPrice": 10000,
-      "bestShop": "Dummy Shop",
-      "list": [
-        {
-          "title": "SanDisk 1TB SSD",
-          "shopName": "Dummy Shop",
-          "itemUrl": "https://example.com/ssd",
-          "price": 10000,
-          "pointRate": 0,
-          "imageUrl": "https://example.com/ssd.jpg",
-          "itemCode": "dummy1"
-        }
-      ]
+      "bestPrice": 9500,
+      "bestShop": "Yahoo Shop",
+      "bestSource": "yahoo",
+      "list": {
+        "rakuten": [
+          {
+            "title": "SanDisk 1TB SSD",
+            "shopName": "Dummy Shop",
+            "itemUrl": "https://example.com/ssd",
+            "price": 10000,
+            "pointRate": 0,
+            "imageUrl": "https://example.com/ssd.jpg",
+            "itemCode": "dummy1"
+          }
+        ],
+        "yahoo": [
+          {
+            "title": "SanDisk 1TB SSD",
+            "shopName": "Yahoo Shop",
+            "itemUrl": "https://yahoo.example.com/ssd",
+            "price": 9500,
+            "pointRate": 5
+          }
+        ]
+      }
     },
     {
       "skuId": "sd_128",
       "bestPrice": 2000,
       "bestShop": "Example Store",
-      "list": [
-        {
-          "title": "SanDisk 128GB SD",
-          "shopName": "Example Store",
-          "itemUrl": "https://example.com/sd",
-          "price": 2000,
-          "pointRate": 0,
-          "imageUrl": "https://example.com/sd.jpg",
-          "itemCode": "dummy2"
-        }
-      ]
+      "bestSource": "rakuten",
+      "list": {
+        "rakuten": [
+          {
+            "title": "SanDisk 128GB SD",
+            "shopName": "Example Store",
+            "itemUrl": "https://example.com/sd",
+            "price": 2000,
+            "pointRate": 0,
+            "imageUrl": "https://example.com/sd.jpg",
+            "itemCode": "dummy2"
+          }
+        ],
+        "yahoo": [
+          {
+            "title": "SanDisk 128GB SD",
+            "shopName": "Yahoo Store",
+            "itemUrl": "https://yahoo.example.com/sd",
+            "price": 2100,
+            "pointRate": 1
+          }
+        ]
+      }
     }
   ]
 }

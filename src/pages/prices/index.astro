@@ -3,6 +3,7 @@ import "../../styles/global.css";
 import data from "../../data/prices/today.json";
 import skus from "../../data/skus.json";
 const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
+const sourceLabels = { rakuten: 'Rakuten', yahoo: 'Yahoo' };
 ---
 <html lang="ja">
   <head>
@@ -18,11 +19,13 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
       <p class="small">対象カテゴリから毎日、自動で候補を抽出し、価格とポイント相当を目安に並べ替えています。</p>
       <p class="small">表示価格は取得時点の参考値です。購入前に必ずリンク先の最新情報をご確認ください。</p>
       <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
+      <p class="small">Rakuten: {data.sourceStatus?.rakuten ?? 'n/a'} / Yahoo: {data.sourceStatus?.yahoo ?? 'n/a'}</p>
       <ul>
         {data.items.map(it => (
           <li>
             <a href={`prices/${it.skuId}/`}>{skuMap[it.skuId]?.q ?? it.skuId}</a>
-            : {it.bestPrice}円 ({it.bestShop})
+            : {it.bestPrice ?? '情報なし'}{it.bestPrice && '円'}{it.bestShop && ` (${it.bestShop})`}
+            {it.bestSource && <span class="small">[{sourceLabels[it.bestSource]}]</span>}
           </li>
         ))}
       </ul>
