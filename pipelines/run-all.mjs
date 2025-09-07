@@ -1,14 +1,13 @@
-import { fileURLToPath } from 'url';
-import path from 'path';
 import { exec as execCb } from 'child_process';
 import { promisify } from 'util';
+import { run as runRss } from './rss.mjs';
+import { run as runPrices, HISTORY_COMMIT_MESSAGE } from './prices-rakuten.mjs';
 const exec = promisify(execCb);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function main(){
   const tasks = [
-    import(path.join(__dirname, 'rss.mjs')).then(m => m.run()),
-    import(path.join(__dirname, 'prices-rakuten.mjs')).then(m => m.run()),
+    runRss(),
+    runPrices(),
   ];
   const results = await Promise.allSettled(tasks);
   let hasFailure = false;
@@ -28,7 +27,7 @@ async function main(){
     await exec('git add data public src/data/prices/today.json');
     const { stdout } = await exec('git status --short data public src/data/prices/today.json');
     if (stdout.trim()) {
-      await exec('git commit -m "chore(history): update prices [skip ci]"');
+      await exec(`git commit -m "${HISTORY_COMMIT_MESSAGE}"`);
       await exec('git push');
     }
   } catch (e) {

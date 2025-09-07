@@ -10,6 +10,7 @@ const historyDir = path.join(rootDir, 'data', 'price-history');
 const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
 
 const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+export const HISTORY_COMMIT_MESSAGE = 'chore(history): update prices [skip ci]';
 
 async function writeHistory(items, { force = false } = {}) {
   try {
