@@ -15,11 +15,11 @@ export function getStaticPaths() {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <base href={import.meta.env.BASE_URL} />
-    <title>{skuInfo ? skuInfo.q : sku}の価格表</title>
+    <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
   </head>
   <body>
     <div class="wrap">
-      <h1>{skuInfo ? skuInfo.q : sku}</h1>
+      <h1>{skuInfo ? skuInfo.q : sku} – 価格一覧</h1>
       <p>ショップ別の価格を一覧しています。並び順は目安（価格・ポイント相当）です。</p>
       <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
       {skuInfo && (
