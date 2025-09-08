@@ -112,7 +112,6 @@ export async function run() {
       const candidates = (data.Items || []).map(it => it.Item);
 
       let hasFilterMismatch = false;
-      let hasBrandMismatch = false;
       let hasOutOfRange = false;
       const filtered = [];
       for (const it of candidates) {
@@ -121,15 +120,12 @@ export async function run() {
           hasFilterMismatch = true;
           continue;
         }
-        if (sku.brandHints && !sku.brandHints.some(b => title.includes(b.toLowerCase()))) {
-          hasBrandMismatch = true;
-          continue;
-        }
         const price = Number(it.itemPrice);
         if ((sku.minPrice && price < sku.minPrice) || (sku.maxPrice && price > sku.maxPrice)) {
           hasOutOfRange = true;
           continue;
         }
+        const brandMatch = sku.brandHints && sku.brandHints.some(b => title.includes(b.toLowerCase()));
         filtered.push({
           title: it.itemName,
           shopName: it.shopName,
@@ -137,17 +133,17 @@ export async function run() {
           price,
           pointRate: Number(it.pointRate) || 0,
           imageUrl: it.mediumImageUrls?.[0]?.imageUrl,
-          itemCode: it.itemCode
+          itemCode: it.itemCode,
+          brandMatch
         });
       }
-      filtered.sort((a, b) => (a.price - a.price * a.pointRate / 100) - (b.price - b.price * b.pointRate / 100));
+      filtered.sort((a, b) => (b.brandMatch - a.brandMatch) || (a.price - a.price * a.pointRate / 100) - (b.price - b.price * b.pointRate / 100));
       const best = filtered[0];
       if (best) {
         successCount++;
       } else {
         let reason = 'price_null';
         if (hasFilterMismatch) reason = 'filter_mismatch';
-        else if (hasBrandMismatch) reason = 'brand_mismatch';
         else if (hasOutOfRange) reason = 'out_of_range';
         skipReasons[reason]++;
       }
@@ -155,7 +151,7 @@ export async function run() {
         skuId: sku.id,
         bestPrice: best?.price ?? null,
         bestShop: best?.shopName ?? null,
-        list: filtered
+        list: filtered.map(({ brandMatch, ...rest }) => rest)
       });
     } catch (e) {
       console.error('[rakuten] sku failed', sku.id, e);
