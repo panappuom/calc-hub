@@ -8,43 +8,59 @@ const skuPath = path.join(rootDir, 'src', 'data', 'skus.json');
 const outPath = path.join(rootDir, 'public', 'data', 'prices', 'today.json');
 const historyDir = path.join(rootDir, 'data', 'price-history');
 const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
+const publicBase = process.env.PUBLIC_BASE_URL || 'https://panappuom.github.io/calc-hub/';
 
 const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
-export const HISTORY_COMMIT_MESSAGE = 'chore(history): update prices [skip ci]';
 const DUMMY_PRICE = 12345;
 
 async function writeHistory(items, { force = false } = {}) {
   try {
     await fs.mkdir(historyDir, { recursive: true });
+    await fs.mkdir(publicHistoryDir, { recursive: true });
     for (const item of items) {
-      if (!force && typeof item.bestPrice !== 'number') continue;
       const histFile = path.join(historyDir, `${item.skuId}.json`);
+      const publicFile = path.join(publicHistoryDir, `${item.skuId}.json`);
       let hist = [];
       try {
-        const raw = await fs.readFile(histFile, 'utf-8');
-        hist = JSON.parse(raw).filter(h => typeof h.price === 'number');
-      } catch {}
+        const url = new URL(`data/price-history/${item.skuId}.json`, publicBase);
+        const res = await fetch(url);
+        if (res.ok) {
+          hist = (await res.json()).filter(h => typeof h.price === 'number');
+          console.log('[rakuten] history: fetched from public URL', url.toString());
+        } else if (res.status === 404) {
+          console.log('[rakuten] history: fetched from public URL', url.toString(), '(new file)');
+        } else {
+          throw new Error(`status ${res.status}`);
+        }
+      } catch (e) {
+        console.warn('[rakuten] history: fetch failed', item.skuId, e);
+        continue;
+      }
 
       let price;
       if (typeof item.bestPrice === 'number') {
         price = item.bestPrice;
-      } else {
+      } else if (force) {
         const last = [...hist].reverse().find(h => typeof h.price === 'number');
         price = last ? last.price : DUMMY_PRICE;
       }
 
-      const idx = hist.findIndex(h => h.date === today);
-      if (idx >= 0) {
-        hist[idx].price = price;
-      } else {
-        hist.push({ date: today, price });
+      if (typeof price === 'number') {
+        const idx = hist.findIndex(h => h.date === today);
+        if (idx >= 0) {
+          hist[idx].price = price;
+        } else {
+          hist.push({ date: today, price });
+        }
+        hist.sort((a, b) => a.date.localeCompare(b.date));
+        if (hist.length > 30) hist = hist.slice(-30);
       }
-      hist.sort((a, b) => a.date.localeCompare(b.date));
-      if (hist.length > 30) hist = hist.slice(-30);
+
       await fs.writeFile(histFile, JSON.stringify(hist, null, 2));
+      await fs.writeFile(publicFile, JSON.stringify(hist, null, 2));
+      console.log('[rakuten] history: merged', item.skuId);
+      console.log('[rakuten] history: wrote', `public/data/price-history/${item.skuId}.json`);
     }
-    await fs.mkdir(publicHistoryDir, { recursive: true });
-    await fs.cp(historyDir, publicHistoryDir, { recursive: true });
   } catch (e) {
     console.warn('[rakuten] failed to update history', e);
   }
@@ -157,8 +173,7 @@ export async function run() {
       console.warn('[rakuten] failed to write today.json', e);
     }
     try {
-      await fs.mkdir(publicHistoryDir, { recursive: true });
-      await fs.cp(historyDir, publicHistoryDir, { recursive: true });
+      await writeHistory(items);
     } catch (e) {
       console.warn('[rakuten] failed to mirror history', e);
     }
