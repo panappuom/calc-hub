@@ -70,6 +70,13 @@ export async function run() {
 
   const items = [];
   let successCount = 0;
+  const skipReasons = {
+    price_null: 0,
+    filter_mismatch: 0,
+    brand_mismatch: 0,
+    out_of_range: 0,
+    parse_error: 0
+  };
   for (const sku of skus) {
     try {
       const url = new URL('https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601');
@@ -81,23 +88,47 @@ export async function run() {
       const res = await fetch(url);
       const data = await res.json();
       const candidates = (data.Items || []).map(it => it.Item);
-      const filtered = candidates.filter(it => {
+
+      let hasFilterMismatch = false;
+      let hasBrandMismatch = false;
+      let hasOutOfRange = false;
+      const filtered = [];
+      for (const it of candidates) {
         const title = it.itemName?.toLowerCase() || '';
-        if (sku.filters && sku.filters.some(f => !title.includes(f.toLowerCase()))) return false;
-        if (sku.brandHints && !sku.brandHints.some(b => title.includes(b.toLowerCase()))) return false;
-        return true;
-      }).map(it => ({
-        title: it.itemName,
-        shopName: it.shopName,
-        itemUrl: it.itemUrl,
-        price: Number(it.itemPrice),
-        pointRate: Number(it.pointRate) || 0,
-        imageUrl: it.mediumImageUrls?.[0]?.imageUrl,
-        itemCode: it.itemCode
-      }));
+        if (sku.filters && sku.filters.some(f => !title.includes(f.toLowerCase()))) {
+          hasFilterMismatch = true;
+          continue;
+        }
+        if (sku.brandHints && !sku.brandHints.some(b => title.includes(b.toLowerCase()))) {
+          hasBrandMismatch = true;
+          continue;
+        }
+        const price = Number(it.itemPrice);
+        if ((sku.minPrice && price < sku.minPrice) || (sku.maxPrice && price > sku.maxPrice)) {
+          hasOutOfRange = true;
+          continue;
+        }
+        filtered.push({
+          title: it.itemName,
+          shopName: it.shopName,
+          itemUrl: it.itemUrl,
+          price,
+          pointRate: Number(it.pointRate) || 0,
+          imageUrl: it.mediumImageUrls?.[0]?.imageUrl,
+          itemCode: it.itemCode
+        });
+      }
       filtered.sort((a, b) => (a.price - a.price * a.pointRate / 100) - (b.price - b.price * b.pointRate / 100));
       const best = filtered[0];
-      if (best) successCount++;
+      if (best) {
+        successCount++;
+      } else {
+        let reason = 'price_null';
+        if (hasFilterMismatch) reason = 'filter_mismatch';
+        else if (hasBrandMismatch) reason = 'brand_mismatch';
+        else if (hasOutOfRange) reason = 'out_of_range';
+        skipReasons[reason]++;
+      }
       items.push({
         skuId: sku.id,
         bestPrice: best?.price ?? null,
@@ -107,6 +138,7 @@ export async function run() {
     } catch (e) {
       console.error('[rakuten] sku failed', sku.id, e);
       items.push({ skuId: sku.id, bestPrice: null, bestShop: null, list: [] });
+      skipReasons.parse_error++;
     }
   }
 
@@ -141,7 +173,9 @@ export async function run() {
 
   const validated = items.filter(it => typeof it.bestPrice === 'number').length;
   const skipped = items.length - validated;
-  console.log(`[rakuten] validated ${validated}, skipped ${skipped}`);
+  console.log(
+    `[rakuten] validated ${validated}, skipped ${skipped} (price_null:${skipReasons.price_null}, filter_mismatch:${skipReasons.filter_mismatch}, brand_mismatch:${skipReasons.brand_mismatch}, out_of_range:${skipReasons.out_of_range}, parse_error:${skipReasons.parse_error})`
+  );
 
   await writeHistory(items);
 }
