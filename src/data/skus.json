@@ -1,4 +1,18 @@
 [
-  { "id": "ssd_1tb", "q": "外付けSSD 1TB", "filters": ["USB 3", "1TB"], "brandHints": ["SanDisk", "Crucial", "ADATA"] },
-  { "id": "sd_128", "q": "SDカード 128GB", "filters": ["UHS-I"], "brandHints": ["SanDisk", "Kioxia"] }
+  {
+    "id": "ssd_1tb",
+    "q": "SSD 1TB",
+    "filters": [],
+    "brandHints": ["SanDisk", "Crucial", "ADATA"],
+    "minPrice": 5000,
+    "maxPrice": 50000
+  },
+  {
+    "id": "sd_128",
+    "q": "SD 128GB",
+    "filters": [],
+    "brandHints": ["SanDisk", "Kioxia"],
+    "minPrice": 500,
+    "maxPrice": 20000
+  }
 ]
