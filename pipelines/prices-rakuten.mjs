@@ -34,7 +34,13 @@ async function writeHistory(items, { force = false } = {}) {
         }
       } catch (e) {
         console.warn('[rakuten] history: fetch failed', item.skuId, e);
-        continue;
+        try {
+          const raw = await fs.readFile(histFile, 'utf-8');
+          hist = JSON.parse(raw).filter(h => typeof h.price === 'number');
+          console.log('[rakuten] history: read from local file', `data/price-history/${item.skuId}.json`);
+        } catch (e2) {
+          console.warn('[rakuten] history: no local history', item.skuId, e2);
+        }
       }
 
       let price;
