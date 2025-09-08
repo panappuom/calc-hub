@@ -49,7 +49,7 @@ async function writeHistory(items, { force = false } = {}) {
       if (typeof item.bestPrice === 'number') {
         price = item.bestPrice;
       } else if (force) {
-        const last = [...hist].reverse().find(h => typeof h.price === 'number');
+        const last = hist.find(h => typeof h.price === 'number');
         price = last ? last.price : DUMMY_PRICE;
       }
 
