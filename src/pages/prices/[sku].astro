@@ -16,6 +16,9 @@ try {
 const { sku } = Astro.params;
 const skuInfo = skus.find(s => s.id === sku);
 const priceInfo = data?.items?.find(i => i.skuId === sku);
+const updatedJst = data?.updatedAt
+  ? new Date(data.updatedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
+  : null;
 
 export function getStaticPaths() {
   return skus.map(s => ({ params: { sku: s.id } }));
@@ -104,5 +107,8 @@ export function getStaticPaths() {
         <p>データ少</p>
       )}
     </div>
+    <footer class="small">
+      {updatedJst ? `最終更新: ${updatedJst} JST` : ''}
+    </footer>
   </body>
 </html>

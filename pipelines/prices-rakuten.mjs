@@ -10,7 +10,9 @@ const historyDir = path.join(rootDir, 'data', 'price-history');
 const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
 const publicBase = process.env.PUBLIC_BASE_URL || 'https://panappuom.github.io/calc-hub/';
 
-const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+// Always generate today's date in JST (Asia/Tokyo) so that
+// history keys are consistent regardless of the environment's timezone.
+const todayJst = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
 const DUMMY_PRICE = 12345;
 
 async function writeHistory(items, { force = false } = {}) {
@@ -47,19 +49,22 @@ async function writeHistory(items, { force = false } = {}) {
       if (typeof item.bestPrice === 'number') {
         price = item.bestPrice;
       } else if (force) {
-        const last = [...hist].reverse().find(h => typeof h.price === 'number');
+        const last = hist.find(h => typeof h.price === 'number');
         price = last ? last.price : DUMMY_PRICE;
       }
 
       if (typeof price === 'number') {
+        const today = todayJst();
         const idx = hist.findIndex(h => h.date === today);
         if (idx >= 0) {
+          // Same-day reruns overwrite existing entry
           hist[idx].price = price;
         } else {
           hist.push({ date: today, price });
         }
-        hist.sort((a, b) => a.date.localeCompare(b.date));
-        if (hist.length > 30) hist = hist.slice(-30);
+        // Keep most recent entry first and cap to last 30 records
+        hist.sort((a, b) => b.date.localeCompare(a.date));
+        if (hist.length > 30) hist = hist.slice(0, 30);
       }
 
       await fs.writeFile(histFile, JSON.stringify(hist, null, 2));
