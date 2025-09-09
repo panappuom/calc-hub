@@ -1,5 +1,6 @@
 import { run as runRss } from './rss.mjs';
 import { run as runPrices } from './prices-rakuten.mjs';
+import { run as runYahooPrices } from './prices-yahoo.mjs';
 
 async function runWithLog(name, fn) {
   console.log(`[pipeline] start ${name}`);
@@ -20,6 +21,11 @@ async function main(){
     tasks.push(runWithLog('prices-rakuten', runPrices));
   } else {
     console.log('[pipeline] skip prices-rakuten: RAKUTEN_APP_ID not set');
+  }
+  if (process.env.YAHOO_APP_ID) {
+    tasks.push(runWithLog('prices-yahoo', runYahooPrices));
+  } else {
+    console.log('[pipeline] skip prices-yahoo: YAHOO_APP_ID not set');
   }
   const results = await Promise.allSettled(tasks);
   let hasFailure = false;
