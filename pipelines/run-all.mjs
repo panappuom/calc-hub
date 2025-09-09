@@ -40,11 +40,14 @@ async function main(){
       results.push({ status: 'rejected', reason: e });
     }
   }
-  results.forEach(r => {
-    if (r.status === 'rejected') {
-      console.error('[pipeline] task failed', r.reason);
-    }
+
+  const failures = results.filter(r => r.status === 'rejected');
+  failures.forEach(r => {
+    console.error('[pipeline] task failed', r.reason);
   });
+  if (failures.length) {
+    throw new Error(`${failures.length} pipeline task(s) failed`);
+  }
   console.log('[pipeline] all done');
 }
 main().catch(e => { console.error(e); process.exit(1); });
