@@ -8,6 +8,10 @@
       "skuId": "ssd_1tb",
       "bestPrice": 10000,
       "bestShop": "Dummy Shop",
+      "bestRecommended": {
+        "price": 10000,
+        "shop": "Dummy Shop"
+      },
       "list": [
         {
           "title": "SanDisk 1TB SSD",
@@ -24,6 +28,10 @@
       "skuId": "sd_128",
       "bestPrice": 2000,
       "bestShop": "Example Store",
+      "bestRecommended": {
+        "price": 2000,
+        "shop": "Example Store"
+      },
       "list": [
         {
           "title": "SanDisk 128GB SD",
