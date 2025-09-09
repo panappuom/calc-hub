@@ -9,8 +9,12 @@ const outPath = path.join(rootDir, 'public', 'data', 'prices', 'today.yahoo.json
 
 export async function run() {
   const appId = process.env.YAHOO_APP_ID;
-  console.log(`[yahoo] appId ${appId ? 'detected' : 'missing'}`);
-  if (!appId) return;
+  const present = Boolean(appId);
+  console.log(`[yahoo] appId present=${present}`);
+  if (!present) {
+    console.log('[yahoo] skip: appId missing');
+    return;
+  }
 
   let skus = [];
   try {

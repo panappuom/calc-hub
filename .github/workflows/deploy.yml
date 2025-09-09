@@ -24,10 +24,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm ci
-      - name: Run pipelines (rss, prices-rakuten)
+      - name: Run pipelines (rss, prices-rakuten, prices-yahoo, merge)
         run: npm run pipeline
         env:
           RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with: { path: "dist" }

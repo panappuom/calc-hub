@@ -14,29 +14,39 @@ async function runWithLog(name, fn) {
 }
 
 async function main(){
-  const tasks = [
-    runWithLog('rss', runRss),
-  ];
+  const tasks = [ ['rss', runRss] ];
+
   if (process.env.RAKUTEN_APP_ID) {
-    tasks.push(runWithLog('prices-rakuten', runPrices));
+    tasks.push(['prices-rakuten', runPrices]);
   } else {
     console.log('[pipeline] skip prices-rakuten: RAKUTEN_APP_ID not set');
   }
-  if (process.env.YAHOO_APP_ID) {
-    tasks.push(runWithLog('prices-yahoo', runYahooPrices));
-  } else {
-    console.log('[pipeline] skip prices-yahoo: YAHOO_APP_ID not set');
+
+  tasks.push(['prices-yahoo', runYahooPrices]);
+
+  try {
+    const { run: runMerge } = await import('./merge.mjs');
+    tasks.push(['merge', runMerge]);
+  } catch {
+    console.log('[pipeline] skip merge: merge.mjs not found');
   }
-  const results = await Promise.allSettled(tasks);
-  let hasFailure = false;
-  results.forEach(r => {
-    if (r.status === 'rejected') {
-      hasFailure = true;
-      console.error('[pipeline] task failed', r.reason);
+
+  const results = [];
+  for (const [name, fn] of tasks) {
+    try {
+      await runWithLog(name, fn);
+      results.push({ status: 'fulfilled' });
+    } catch (e) {
+      results.push({ status: 'rejected', reason: e });
     }
+  }
+
+  const failures = results.filter(r => r.status === 'rejected');
+  failures.forEach(r => {
+    console.error('[pipeline] task failed', r.reason);
   });
-  if (hasFailure) {
-    throw new Error('[pipeline] one or more tasks failed');
+  if (failures.length) {
+    throw new Error(`${failures.length} pipeline task(s) failed`);
   }
   console.log('[pipeline] all done');
 }
