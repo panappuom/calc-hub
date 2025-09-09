@@ -7,7 +7,6 @@
     {
       "skuId": "ssd_1tb",
       "bestPrice": 10000,
-      "bestShop": "Dummy Shop",
       "bestRecommended": {
         "price": 10000,
         "shopName": "Dummy Shop"
@@ -27,7 +26,6 @@
     {
       "skuId": "sd_128",
       "bestPrice": 2000,
-      "bestShop": "Example Store",
       "bestRecommended": {
         "price": 2000,
         "shopName": "Example Store"
