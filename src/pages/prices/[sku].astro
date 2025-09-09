@@ -20,7 +20,7 @@ const updatedJst = data?.updatedAt
   ? new Date(data.updatedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
   : null;
 
-const list = priceInfo?.list ?? [];
+const list = priceInfo?.list ? [...priceInfo.list].sort((a, b) => a.price - b.price) : [];
 const bestToday = list.length
   ? list.reduce((min, it) => (it.price < min.price ? it : min), list[0])
   : null;
@@ -89,24 +89,48 @@ export function getStaticPaths() {
               )}
             </ul>
           </div>
-          <table>
+          <button id="sort-toggle">実質価格順に切替</button>
+          <table id="price-table">
             <thead>
-              <tr><th>ショップ</th><th>価格</th></tr>
+              <tr><th>ショップ</th><th>価格</th><th>実質価格<br/><span class="small">（ポイント考慮の試算）</span></th></tr>
             </thead>
             <tbody>
-              {priceInfo.list.map(it => (
-                <tr>
-                  <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
-                  <td>{formatPrice(it)}</td>
-                </tr>
-              ))}
+              {list.map(it => {
+                const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
+                return (
+                  <tr data-price={it.price} data-eff={eff}>
+                    <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
+                    <td>{formatPrice(it)}</td>
+                    <td>{eff}円</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          <p class="small">※実質価格はポイント考慮の試算</p>
           <p class="small">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
           <h2>価格推移 (30日)</h2>
           <canvas id="chart" width="600" height="200" data-sku={sku}></canvas>
           <p id="chart-msg" class="small"></p>
           <p class="small">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
+          <script>
+            const toggle = document.getElementById('sort-toggle');
+            const table = document.getElementById('price-table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            let byEff = false;
+            function sortRows() {
+              rows.sort((a, b) => {
+                const k = byEff ? 'eff' : 'price';
+                return Number(a.dataset[k]) - Number(b.dataset[k]);
+              }).forEach(r => tbody.appendChild(r));
+            }
+            toggle.addEventListener('click', () => {
+              byEff = !byEff;
+              sortRows();
+              toggle.textContent = byEff ? '価格順に切替' : '実質価格順に切替';
+            });
+          </script>
           <script>
             const canvas = document.getElementById('chart');
             const sku = canvas.dataset.sku;
