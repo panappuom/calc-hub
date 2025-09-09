@@ -22,6 +22,7 @@ export async function run() {
   }
 
   const items = [];
+  let successCount = 0;
   for (const sku of skus) {
     try {
       const url = new URL('https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch');
@@ -43,14 +44,32 @@ export async function run() {
       })).filter(it => typeof it.price === 'number');
       list.sort((a, b) => a.price - b.price);
       const best = list[0];
+      if (best) successCount++;
       items.push({ skuId: sku.id, bestPrice: best?.price ?? null, bestShop: best?.shopName ?? null, list });
     } catch (e) {
       console.error('[yahoo] sku failed', sku.id, e);
       items.push({ skuId: sku.id, bestPrice: null, bestShop: null, list: [] });
     }
   }
+  if (successCount === 0) {
+    console.warn('[yahoo] all fetches failed, keep previous data');
+    let out = { updatedAt: new Date().toISOString(), items: [] };
+    try {
+      const raw = await fs.readFile(outPath, 'utf-8');
+      out = JSON.parse(raw);
+    } catch {}
+    out.sourceStatus = { ...(out.sourceStatus || {}), yahoo: 'fail' };
+    try {
+      await fs.mkdir(path.dirname(outPath), { recursive: true });
+      await fs.writeFile(outPath, JSON.stringify(out, null, 2));
+    } catch (e) {
+      console.warn('[yahoo] failed to write output', e);
+    }
+    return;
+  }
 
-  const out = { updatedAt: new Date().toISOString(), items, sourceStatus: { yahoo: 'ok' } };
+  const status = successCount === skus.length ? 'ok' : 'partial';
+  const out = { updatedAt: new Date().toISOString(), items, sourceStatus: { yahoo: status } };
   try {
     await fs.mkdir(path.dirname(outPath), { recursive: true });
     await fs.writeFile(outPath, JSON.stringify(out, null, 2));
