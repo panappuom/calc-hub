@@ -10,7 +10,7 @@
       "bestShop": "Dummy Shop",
       "bestRecommended": {
         "price": 10000,
-        "shop": "Dummy Shop"
+        "shopName": "Dummy Shop"
       },
       "list": [
         {
@@ -30,7 +30,7 @@
       "bestShop": "Example Store",
       "bestRecommended": {
         "price": 2000,
-        "shop": "Example Store"
+        "shopName": "Example Store"
       },
       "list": [
         {

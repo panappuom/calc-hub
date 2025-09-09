@@ -24,8 +24,8 @@ const list = priceInfo?.list ?? [];
 const bestToday = list.length
   ? list.reduce((min, it) => (it.price < min.price ? it : min), list[0])
   : null;
-let bestRecommended;
-if (list.length && skuInfo?.brandHints?.length) {
+let bestRecommended = priceInfo?.bestRecommended ?? null;
+if (!bestRecommended && list.length && skuInfo?.brandHints?.length) {
   const cand = list.filter(it =>
     skuInfo.brandHints.some(b => it.title?.toLowerCase().includes(b.toLowerCase()))
   );
@@ -57,7 +57,7 @@ export function getStaticPaths() {
     <div class="wrap">
         <a href="./" class="small">← トップ</a>
       <h1>{skuInfo ? skuInfo.q : sku} – 価格一覧</h1>
-      <p>ショップ別の価格を一覧しています。並び順は目安（価格・ポイント相当）です。</p>
+      <p>ショップ別の価格を一覧しています。並び順は目安（価格）です。</p>
       <p class="small">
         {data
           ? `取得日時: ${new Date(data.updatedAt).toLocaleString('ja-JP')}`
@@ -90,14 +90,13 @@ export function getStaticPaths() {
           </div>
           <table>
             <thead>
-              <tr><th>ショップ</th><th>価格</th><th>ポイント倍率</th></tr>
+              <tr><th>ショップ</th><th>価格</th></tr>
             </thead>
             <tbody>
               {priceInfo.list.map(it => (
                 <tr>
                   <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
-                  <td>{it.price}円</td>
-                  <td>{it.pointRate}%</td>
+                  <td>{formatPrice(it)}</td>
                 </tr>
               ))}
             </tbody>
