@@ -5,6 +5,10 @@ on:
   schedule:
     - cron: "0 18 * * *"  # 03:00 JST
 
+concurrency:
+  group: "deploy-${{ github.ref }}"
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pages: write
