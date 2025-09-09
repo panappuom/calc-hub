@@ -13,6 +13,14 @@ export async function run() {
   console.log(`[yahoo] appId present=${present}`);
   if (!present) {
     console.log('[yahoo] skip: appId missing');
+    try {
+      await fs.unlink(outPath);
+      console.log('[yahoo] removed', outPath);
+    } catch (e) {
+      if (e.code !== 'ENOENT') {
+        console.warn('[yahoo] failed to remove output', e);
+      }
+    }
     return;
   }
 
