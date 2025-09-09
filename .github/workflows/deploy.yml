@@ -4,10 +4,9 @@ on:
     branches: [ main ]
   schedule:
     - cron: "0 18 * * *"  # 03:00 JST
-  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
