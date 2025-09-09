@@ -26,9 +26,10 @@ const bestToday = list.length
   : null;
 let bestRecommended;
 if (list.length && skuInfo?.brandHints?.length) {
-  const cand = list.filter(it =>
-    skuInfo.brandHints.some(b => it.title?.toLowerCase().includes(b.toLowerCase()))
-  );
+  const cand = list.filter(it => {
+    const title = it.title?.toLowerCase() ?? '';
+    return skuInfo.brandHints.some(b => title.includes(b.toLowerCase()));
+  });
   if (cand.length) {
     bestRecommended = cand.reduce((min, it) => (it.price < min.price ? it : min), cand[0]);
   }
