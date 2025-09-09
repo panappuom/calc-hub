@@ -20,6 +20,28 @@ const updatedJst = data?.updatedAt
   ? new Date(data.updatedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
   : null;
 
+const list = priceInfo?.list ?? [];
+const bestToday = list.length
+  ? list.reduce((min, it) => (it.price < min.price ? it : min), list[0])
+  : null;
+let bestRecommended;
+if (list.length && skuInfo?.brandHints?.length) {
+  const cand = list.filter(it =>
+    skuInfo.brandHints.some(b => it.title?.toLowerCase().includes(b.toLowerCase()))
+  );
+  if (cand.length) {
+    bestRecommended = cand.reduce((min, it) => (it.price < min.price ? it : min), cand[0]);
+  }
+}
+function formatPrice(it) {
+  if (!it) return '';
+  if (it.pointRate) {
+    const eff = Math.round(it.price * (100 - it.pointRate) / 100);
+    return `${it.price}円（ポイント${it.pointRate}%で実質${eff}円）`;
+  }
+  return `${it.price}円`;
+}
+
 export function getStaticPaths() {
   return skus.map(s => ({ params: { sku: s.id } }));
 }
@@ -52,6 +74,20 @@ export function getStaticPaths() {
       )}
       {priceInfo ? (
         <>
+          <div>
+            <h2>最安情報</h2>
+            <ul>
+              <li>今日の最安: {bestToday ? `${formatPrice(bestToday)} (${bestToday.shopName})` : 'データ少'}</li>
+              {skuInfo?.brandHints?.length && (
+                <li>
+                  推奨最安（ブランド一致優先）:
+                  {bestRecommended
+                    ? `${formatPrice(bestRecommended)} (${bestRecommended.shopName})`
+                    : '該当なし'}
+                </li>
+              )}
+            </ul>
+          </div>
           <table>
             <thead>
               <tr><th>ショップ</th><th>価格</th><th>ポイント倍率</th></tr>
