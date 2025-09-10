@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 const skuPath = path.join(rootDir, 'src', 'data', 'skus.json');
-const outPath = path.join(rootDir, 'public', 'data', 'prices', 'today.json');
+const outPath = path.join(rootDir, 'public', 'data', 'prices', 'today.rakuten.json');
 const historyDir = path.join(rootDir, 'data', 'price-history');
 const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
 const publicBase = process.env.PUBLIC_BASE_URL || 'https://panappuom.github.io/calc-hub/';
