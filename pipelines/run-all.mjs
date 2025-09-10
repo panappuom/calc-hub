@@ -1,6 +1,7 @@
 import { run as runRss } from './rss.mjs';
 import { run as runPrices } from './prices-rakuten.mjs';
 import { run as runYahooPrices } from './prices-yahoo.mjs';
+import { run as runMergePrices } from './prices-merge.mjs';
 
 async function runWithLog(name, fn) {
   console.log(`[pipeline] start ${name}`);
@@ -23,13 +24,7 @@ async function main(){
   }
 
   tasks.push(['prices-yahoo', runYahooPrices]);
-
-  try {
-    const { run: runMerge } = await import('./merge.mjs');
-    tasks.push(['merge', runMerge]);
-  } catch {
-    console.log('[pipeline] skip merge: merge.mjs not found');
-  }
+  tasks.push(['prices-merge', runMergePrices]);
 
   const results = [];
   for (const [name, fn] of tasks) {
