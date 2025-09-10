@@ -4,8 +4,9 @@ import fs from 'fs/promises';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
-const publicOut = path.join(rootDir, 'public', 'data', 'prices', 'today.json');
+const rakutenPath = path.join(rootDir, 'public', 'data', 'prices', 'today.rakuten.json');
 const yahooPath = path.join(rootDir, 'public', 'data', 'prices', 'today.yahoo.json');
+const publicOut = path.join(rootDir, 'public', 'data', 'prices', 'today.json');
 const dataOut = path.join(rootDir, 'data', 'prices', 'today.json');
 
 async function readJson(p) {
@@ -46,7 +47,7 @@ function mergeItems(...sources) {
 
 export async function run() {
   const prev = await readJson(dataOut);
-  const rakutenData = await readJson(publicOut);
+  const rakutenData = await readJson(rakutenPath);
   const yahooData = await readJson(yahooPath);
   const rakutenStatus = process.env.RAKUTEN_APP_ID ? (rakutenData?.sourceStatus?.rakuten ?? 'fail') : 'fail';
   const yahooStatus = yahooData?.sourceStatus?.yahoo ?? 'fail';
