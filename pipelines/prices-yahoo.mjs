@@ -60,7 +60,6 @@ export async function run() {
 
       let hasFilterMismatch = false;
       let hasOutOfRange = false;
-      const normalizedSet = new Set();
       const list = [];
       for (const it of hits) {
         const rawTitle = it.name || '';
@@ -87,11 +86,6 @@ export async function run() {
           continue;
         }
         const norm = normalizeTitle(rawTitle);
-        if (normalizedSet.has(norm)) {
-          skipReasons.dup_normalized++;
-          continue;
-        }
-        normalizedSet.add(norm);
         const brandMatch = sku.brandHints && sku.brandHints.some(b => title.includes(b.toLowerCase()));
         list.push({
           title: it.name,
@@ -101,7 +95,8 @@ export async function run() {
           pointRate: Number(it.point?.amount) || Number(it.point) || 0,
           imageUrl: it.image?.small || it.image?.medium || it.image,
           itemCode: it.code,
-          brandMatch
+          brandMatch,
+          norm
         });
       }
       list.sort(
@@ -109,7 +104,17 @@ export async function run() {
           b.brandMatch - a.brandMatch ||
           (a.price - (a.price * a.pointRate) / 100) - (b.price - (b.price * b.pointRate) / 100)
       );
-      const best = list[0];
+      const deduped = [];
+      const seenNorms = new Set();
+      for (const it of list) {
+        if (seenNorms.has(it.norm)) {
+          skipReasons.dup_normalized++;
+          continue;
+        }
+        seenNorms.add(it.norm);
+        deduped.push(it);
+      }
+      const best = deduped[0];
       if (best) {
         successCount++;
       } else {
@@ -122,7 +127,7 @@ export async function run() {
         skuId: sku.id,
         bestPrice: best?.price ?? null,
         bestShop: best?.shopName ?? null,
-        list: list.map(({ brandMatch, ...rest }) => rest)
+        list: deduped.map(({ brandMatch, norm, ...rest }) => rest)
       });
     } catch (e) {
       console.error('[yahoo] sku failed', sku.id, e);

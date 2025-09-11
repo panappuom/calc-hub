@@ -123,7 +123,6 @@ export async function run() {
 
       let hasFilterMismatch = false;
       let hasOutOfRange = false;
-      const normalizedSet = new Set();
       const filtered = [];
       for (const it of candidates) {
         const rawTitle = it.itemName || '';
@@ -151,11 +150,6 @@ export async function run() {
           continue;
         }
         const norm = normalizeTitle(rawTitle);
-        if (normalizedSet.has(norm)) {
-          skipReasons.dup_normalized++;
-          continue;
-        }
-        normalizedSet.add(norm);
         const brandMatch = sku.brandHints && sku.brandHints.some(b => title.includes(b.toLowerCase()));
         filtered.push({
           title: it.itemName,
@@ -165,11 +159,22 @@ export async function run() {
           pointRate: Number(it.pointRate) || 0,
           imageUrl: it.mediumImageUrls?.[0]?.imageUrl,
           itemCode: it.itemCode,
-          brandMatch
+          brandMatch,
+          norm
         });
       }
       filtered.sort((a, b) => (b.brandMatch - a.brandMatch) || (a.price - a.price * a.pointRate / 100) - (b.price - b.price * b.pointRate / 100));
-      const best = filtered[0];
+      const deduped = [];
+      const seenNorms = new Set();
+      for (const it of filtered) {
+        if (seenNorms.has(it.norm)) {
+          skipReasons.dup_normalized++;
+          continue;
+        }
+        seenNorms.add(it.norm);
+        deduped.push(it);
+      }
+      const best = deduped[0];
       if (best) {
         successCount++;
       } else {
@@ -182,7 +187,7 @@ export async function run() {
         skuId: sku.id,
         bestPrice: best?.price ?? null,
         bestShop: best?.shopName ?? null,
-        list: filtered.map(({ brandMatch, ...rest }) => rest)
+        list: deduped.map(({ brandMatch, norm, ...rest }) => rest)
       });
     } catch (e) {
       console.error('[rakuten] sku failed', sku.id, e);
