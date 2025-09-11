@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs/promises';
+import { normalizeTitle, ACCESSORY_RE } from './normalize.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
@@ -15,7 +16,6 @@ const publicBase = process.env.PUBLIC_BASE_URL || 'https://panappuom.github.io/c
 const todayJst = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
 const DUMMY_PRICE = 12345;
 const SD128_CAPACITY_RE = /(128\s?GB|128G)\b/i;
-const ACCESSORY_RE = /(アダプタ|アダプター|adapter|変換|ケース|case|カバー|cover|ヒートシンク|heatsink|ステッカー|sticker|延長|ケーブル|cable)/i;
 
 async function writeHistory(items, { force = false } = {}) {
   try {
@@ -105,6 +105,7 @@ export async function run() {
     brand_mismatch: 0,
     capacity_mismatch: 0,
     accessory: 0,
+    dup_normalized: 0,
     out_of_range: 0,
     parse_error: 0
   };
@@ -122,13 +123,16 @@ export async function run() {
 
       let hasFilterMismatch = false;
       let hasOutOfRange = false;
+      const normalizedSet = new Set();
       const filtered = [];
       for (const it of candidates) {
-        const title = it.itemName?.toLowerCase() || '';
+        const rawTitle = it.itemName || '';
+        const title = rawTitle.toLowerCase();
         const caption = it.itemCaption?.toLowerCase() || '';
         const text = `${title} ${caption}`;
         if (sku.filters && sku.filters.some(f => !title.includes(f.toLowerCase()))) {
           hasFilterMismatch = true;
+          skipReasons.filter_mismatch++;
           continue;
         }
         if (sku.id === 'sd_128') {
@@ -146,6 +150,12 @@ export async function run() {
           hasOutOfRange = true;
           continue;
         }
+        const norm = normalizeTitle(rawTitle);
+        if (normalizedSet.has(norm)) {
+          skipReasons.dup_normalized++;
+          continue;
+        }
+        normalizedSet.add(norm);
         const brandMatch = sku.brandHints && sku.brandHints.some(b => title.includes(b.toLowerCase()));
         filtered.push({
           title: it.itemName,
@@ -212,7 +222,7 @@ export async function run() {
   const validated = items.filter(it => typeof it.bestPrice === 'number').length;
   const skipped = items.length - validated;
   console.log(
-    `[rakuten] validated ${validated}, skipped ${skipped} (price_null:${skipReasons.price_null}, filter_mismatch:${skipReasons.filter_mismatch}, brand_mismatch:${skipReasons.brand_mismatch}, capacity_mismatch:${skipReasons.capacity_mismatch}, accessory:${skipReasons.accessory}, out_of_range:${skipReasons.out_of_range}, parse_error:${skipReasons.parse_error})`
+    `[rakuten] validated ${validated}, skipped ${skipped} (price_null:${skipReasons.price_null}, filter_mismatch:${skipReasons.filter_mismatch}, brand_mismatch:${skipReasons.brand_mismatch}, capacity_mismatch:${skipReasons.capacity_mismatch}, accessory:${skipReasons.accessory}, dup_normalized:${skipReasons.dup_normalized}, out_of_range:${skipReasons.out_of_range}, parse_error:${skipReasons.parse_error})`
   );
 
   await writeHistory(items);
