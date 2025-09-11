@@ -60,7 +60,7 @@ export async function run() {
 
       let hasFilterMismatch = false;
       let hasOutOfRange = false;
-      const list = [];
+      const normalizedMap = new Map();
       for (const it of hits) {
         const rawTitle = it.name || '';
         const title = rawTitle.toLowerCase();
@@ -87,22 +87,35 @@ export async function run() {
         }
         const norm = normalizeTitle(rawTitle);
         const brandMatch = sku.brandHints && sku.brandHints.some(b => title.includes(b.toLowerCase()));
-        list.push({
+        const pointRate = Number(it.point?.amount) || Number(it.point) || 0;
+        const item = {
           title: it.name,
           shopName: it.seller?.name,
           itemUrl: it.url,
           price,
-          pointRate: Number(it.point?.amount) || Number(it.point) || 0,
+          pointRate,
           imageUrl: it.image?.small || it.image?.medium || it.image,
           itemCode: it.code,
-          brandMatch,
-          norm
-        });
+          brandMatch
+        };
+        const eff = price - (price * pointRate) / 100;
+        if (normalizedMap.has(norm)) {
+          const prev = normalizedMap.get(norm);
+          const prevEff = prev.price - (prev.price * prev.pointRate) / 100;
+          skipReasons.dup_normalized++;
+          if (eff < prevEff) {
+            normalizedMap.set(norm, item);
+          }
+        } else {
+          normalizedMap.set(norm, item);
+        }
       }
+      const list = Array.from(normalizedMap.values());
       list.sort(
         (a, b) =>
           b.brandMatch - a.brandMatch ||
-          (a.price - (a.price * a.pointRate) / 100) - (b.price - (b.price * b.pointRate) / 100)
+          (a.price - (a.price * a.pointRate) / 100) -
+            (b.price - (b.price * b.pointRate) / 100)
       );
       const deduped = [];
       const seenNorms = new Set();

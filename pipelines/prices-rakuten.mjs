@@ -123,7 +123,7 @@ export async function run() {
 
       let hasFilterMismatch = false;
       let hasOutOfRange = false;
-      const filtered = [];
+      const normalizedMap = new Map();
       for (const it of candidates) {
         const rawTitle = it.itemName || '';
         const title = rawTitle.toLowerCase();
@@ -151,30 +151,37 @@ export async function run() {
         }
         const norm = normalizeTitle(rawTitle);
         const brandMatch = sku.brandHints && sku.brandHints.some(b => title.includes(b.toLowerCase()));
-        filtered.push({
+        const pointRate = Number(it.pointRate) || 0;
+        const item = {
           title: it.itemName,
           shopName: it.shopName,
           itemUrl: it.itemUrl,
           price,
-          pointRate: Number(it.pointRate) || 0,
+          pointRate,
           imageUrl: it.mediumImageUrls?.[0]?.imageUrl,
           itemCode: it.itemCode,
-          brandMatch,
-          norm
-        });
-      }
-      filtered.sort((a, b) => (b.brandMatch - a.brandMatch) || (a.price - a.price * a.pointRate / 100) - (b.price - b.price * b.pointRate / 100));
-      const deduped = [];
-      const seenNorms = new Set();
-      for (const it of filtered) {
-        if (seenNorms.has(it.norm)) {
+          brandMatch
+        };
+        const eff = price - (price * pointRate) / 100;
+        if (normalizedMap.has(norm)) {
+          const prev = normalizedMap.get(norm);
+          const prevEff = prev.price - (prev.price * prev.pointRate) / 100;
           skipReasons.dup_normalized++;
-          continue;
+          if (eff < prevEff) {
+            normalizedMap.set(norm, item);
+          }
+        } else {
+          normalizedMap.set(norm, item);
         }
-        seenNorms.add(it.norm);
-        deduped.push(it);
       }
-      const best = deduped[0];
+      const filtered = Array.from(normalizedMap.values());
+      filtered.sort(
+        (a, b) =>
+          b.brandMatch - a.brandMatch ||
+          (a.price - (a.price * a.pointRate) / 100) -
+            (b.price - (b.price * b.pointRate) / 100)
+      );
+      const best = filtered[0];
       if (best) {
         successCount++;
       } else {
