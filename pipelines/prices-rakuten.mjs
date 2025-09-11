@@ -194,7 +194,7 @@ export async function run() {
         skuId: sku.id,
         bestPrice: best?.price ?? null,
         bestShop: best?.shopName ?? null,
-        list: filtered.map(({ brandMatch, ...rest }) => rest)
+        list: deduped.map(({ brandMatch, norm, ...rest }) => rest)
       });
     } catch (e) {
       console.error('[rakuten] sku failed', sku.id, e);

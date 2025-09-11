@@ -117,7 +117,17 @@ export async function run() {
           (a.price - (a.price * a.pointRate) / 100) -
             (b.price - (b.price * b.pointRate) / 100)
       );
-      const best = list[0];
+      const deduped = [];
+      const seenNorms = new Set();
+      for (const it of list) {
+        if (seenNorms.has(it.norm)) {
+          skipReasons.dup_normalized++;
+          continue;
+        }
+        seenNorms.add(it.norm);
+        deduped.push(it);
+      }
+      const best = deduped[0];
       if (best) {
         successCount++;
       } else {
@@ -130,7 +140,7 @@ export async function run() {
         skuId: sku.id,
         bestPrice: best?.price ?? null,
         bestShop: best?.shopName ?? null,
-        list: list.map(({ brandMatch, ...rest }) => rest)
+        list: deduped.map(({ brandMatch, norm, ...rest }) => rest)
       });
     } catch (e) {
       console.error('[yahoo] sku failed', sku.id, e);
