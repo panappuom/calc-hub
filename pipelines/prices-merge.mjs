@@ -8,6 +8,12 @@ const rakutenPath = path.join(rootDir, 'public', 'data', 'prices', 'today.rakute
 const yahooPath = path.join(rootDir, 'public', 'data', 'prices', 'today.yahoo.json');
 const publicOut = path.join(rootDir, 'public', 'data', 'prices', 'today.json');
 const dataOut = path.join(rootDir, 'data', 'prices', 'today.json');
+const historyDir = path.join(rootDir, 'data', 'price-history');
+const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
+const publicBase = process.env.PUBLIC_BASE_URL || 'https://panappuom.github.io/calc-hub/';
+
+// Generate today's date in JST for consistent history keys
+const todayJst = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
 
 async function readJson(p) {
   try {
@@ -45,12 +51,65 @@ function mergeItems(...sources) {
   return items;
 }
 
+async function updateHistory(items) {
+  try {
+    await fs.mkdir(historyDir, { recursive: true });
+    await fs.mkdir(publicHistoryDir, { recursive: true });
+    for (const item of items) {
+      const histFile = path.join(historyDir, `${item.skuId}.json`);
+      const publicFile = path.join(publicHistoryDir, `${item.skuId}.json`);
+      let hist = [];
+      try {
+        const url = new URL(`data/price-history/${item.skuId}.json`, publicBase);
+        const res = await fetch(url);
+        if (res.ok) {
+          hist = (await res.json()).filter(h => typeof h.price === 'number');
+          console.log('[merge] history: fetched from public URL', url.toString());
+        } else if (res.status === 404) {
+          console.log('[merge] history: fetched from public URL', url.toString(), '(new file)');
+        } else {
+          throw new Error(`status ${res.status}`);
+        }
+      } catch (e) {
+        console.warn('[merge] history: fetch failed', item.skuId, e);
+        try {
+          const raw = await fs.readFile(histFile, 'utf-8');
+          hist = JSON.parse(raw).filter(h => typeof h.price === 'number');
+          console.log('[merge] history: read from local file', `data/price-history/${item.skuId}.json`);
+        } catch (e2) {
+          console.warn('[merge] history: no local history', item.skuId, e2);
+        }
+      }
+
+      if (typeof item.bestPrice === 'number') {
+        const today = todayJst();
+        const idx = hist.findIndex(h => h.date === today);
+        if (idx >= 0) {
+          hist[idx].price = item.bestPrice;
+        } else {
+          hist.push({ date: today, price: item.bestPrice });
+        }
+        hist.sort((a, b) => b.date.localeCompare(a.date));
+        if (hist.length > 30) hist = hist.slice(0, 30);
+
+        await fs.writeFile(histFile, JSON.stringify(hist, null, 2));
+        await fs.writeFile(publicFile, JSON.stringify(hist, null, 2));
+        console.log('[merge] history: merged', item.skuId);
+        console.log('[merge] history: wrote', `public/data/price-history/${item.skuId}.json`);
+      }
+    }
+  } catch (e) {
+    console.warn('[merge] failed to update history', e);
+  }
+}
+
 export async function run() {
   const prev = await readJson(dataOut);
   const rakutenData = await readJson(rakutenPath);
   const yahooData = await readJson(yahooPath);
   const rakutenStatus = process.env.RAKUTEN_APP_ID ? (rakutenData?.sourceStatus?.rakuten ?? 'fail') : 'fail';
   const yahooStatus = yahooData?.sourceStatus?.yahoo ?? 'fail';
+  const shouldUpdateHistory = rakutenStatus !== 'fail' || yahooStatus !== 'fail';
 
   let out;
   if (rakutenStatus === 'fail' || yahooStatus === 'fail') {
@@ -75,6 +134,9 @@ export async function run() {
   await fs.mkdir(path.dirname(dataOut), { recursive: true });
   await fs.writeFile(publicOut, JSON.stringify(out, null, 2));
   await fs.writeFile(dataOut, JSON.stringify(out, null, 2));
+  if (shouldUpdateHistory) {
+    await updateHistory(out.items);
+  }
   console.log(`[merge] rakuten=${rakutenStatus}, yahoo=${yahooStatus}, merged=${out.items.length}`);
 }
 

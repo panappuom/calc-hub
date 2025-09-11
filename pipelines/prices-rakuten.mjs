@@ -7,77 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 const skuPath = path.join(rootDir, 'src', 'data', 'skus.json');
 const outPath = path.join(rootDir, 'public', 'data', 'prices', 'today.rakuten.json');
-const historyDir = path.join(rootDir, 'data', 'price-history');
-const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
-const publicBase = process.env.PUBLIC_BASE_URL || 'https://panappuom.github.io/calc-hub/';
-
-// Always generate today's date in JST (Asia/Tokyo) so that
-// history keys are consistent regardless of the environment's timezone.
-const todayJst = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
-const DUMMY_PRICE = 12345;
 const SD128_CAPACITY_RE = /(128\s?GB|128G)\b/i;
-
-async function writeHistory(items, { force = false } = {}) {
-  try {
-    await fs.mkdir(historyDir, { recursive: true });
-    await fs.mkdir(publicHistoryDir, { recursive: true });
-    for (const item of items) {
-      const histFile = path.join(historyDir, `${item.skuId}.json`);
-      const publicFile = path.join(publicHistoryDir, `${item.skuId}.json`);
-      let hist = [];
-      try {
-        const url = new URL(`data/price-history/${item.skuId}.json`, publicBase);
-        const res = await fetch(url);
-        if (res.ok) {
-          hist = (await res.json()).filter(h => typeof h.price === 'number');
-          console.log('[rakuten] history: fetched from public URL', url.toString());
-        } else if (res.status === 404) {
-          console.log('[rakuten] history: fetched from public URL', url.toString(), '(new file)');
-        } else {
-          throw new Error(`status ${res.status}`);
-        }
-      } catch (e) {
-        console.warn('[rakuten] history: fetch failed', item.skuId, e);
-        try {
-          const raw = await fs.readFile(histFile, 'utf-8');
-          hist = JSON.parse(raw).filter(h => typeof h.price === 'number');
-          console.log('[rakuten] history: read from local file', `data/price-history/${item.skuId}.json`);
-        } catch (e2) {
-          console.warn('[rakuten] history: no local history', item.skuId, e2);
-        }
-      }
-
-      let price;
-      if (typeof item.bestPrice === 'number') {
-        price = item.bestPrice;
-      } else if (force) {
-        const last = hist.find(h => typeof h.price === 'number');
-        price = last ? last.price : DUMMY_PRICE;
-      }
-
-      if (typeof price === 'number') {
-        const today = todayJst();
-        const idx = hist.findIndex(h => h.date === today);
-        if (idx >= 0) {
-          // Same-day reruns overwrite existing entry
-          hist[idx].price = price;
-        } else {
-          hist.push({ date: today, price });
-        }
-        // Keep most recent entry first and cap to last 30 records
-        hist.sort((a, b) => b.date.localeCompare(a.date));
-        if (hist.length > 30) hist = hist.slice(0, 30);
-      }
-
-      await fs.writeFile(histFile, JSON.stringify(hist, null, 2));
-      await fs.writeFile(publicFile, JSON.stringify(hist, null, 2));
-      console.log('[rakuten] history: merged', item.skuId);
-      console.log('[rakuten] history: wrote', `public/data/price-history/${item.skuId}.json`);
-    }
-  } catch (e) {
-    console.warn('[rakuten] failed to update history', e);
-  }
-}
 
 export async function run() {
   const appId = process.env.RAKUTEN_APP_ID;
@@ -91,9 +21,7 @@ export async function run() {
     return;
   }
   if (!appId) {
-    console.warn('[rakuten] RAKUTEN_APP_ID is missing, insert dummy history');
-    const dummy = skus.map(s => ({ skuId: s.id, bestPrice: null }));
-    await writeHistory(dummy, { force: true });
+    console.warn('[rakuten] RAKUTEN_APP_ID is missing');
     return;
   }
 
@@ -217,11 +145,6 @@ export async function run() {
     } catch (e) {
       console.warn('[rakuten] failed to write today.json', e);
     }
-    try {
-      await writeHistory(items);
-    } catch (e) {
-      console.warn('[rakuten] failed to mirror history', e);
-    }
     return;
   }
 
@@ -236,6 +159,4 @@ export async function run() {
   console.log(
     `[rakuten] validated ${validated}, skipped ${skipped} (price_null:${skipReasons.price_null}, filter_mismatch:${skipReasons.filter_mismatch}, brand_mismatch:${skipReasons.brand_mismatch}, capacity_mismatch:${skipReasons.capacity_mismatch}, accessory:${skipReasons.accessory}, dup_normalized:${skipReasons.dup_normalized}, out_of_range:${skipReasons.out_of_range}, parse_error:${skipReasons.parse_error})`
   );
-
-  await writeHistory(items);
 }
