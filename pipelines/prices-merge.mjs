@@ -109,6 +109,7 @@ export async function run() {
   const yahooData = await readJson(yahooPath);
   const rakutenStatus = process.env.RAKUTEN_APP_ID ? (rakutenData?.sourceStatus?.rakuten ?? 'fail') : 'fail';
   const yahooStatus = yahooData?.sourceStatus?.yahoo ?? 'fail';
+  const shouldUpdateHistory = rakutenStatus !== 'fail' || yahooStatus !== 'fail';
 
   let out;
   if (rakutenStatus === 'fail' || yahooStatus === 'fail') {
@@ -133,7 +134,9 @@ export async function run() {
   await fs.mkdir(path.dirname(dataOut), { recursive: true });
   await fs.writeFile(publicOut, JSON.stringify(out, null, 2));
   await fs.writeFile(dataOut, JSON.stringify(out, null, 2));
-  await updateHistory(out.items);
+  if (shouldUpdateHistory) {
+    await updateHistory(out.items);
+  }
   console.log(`[merge] rakuten=${rakutenStatus}, yahoo=${yahooStatus}, merged=${out.items.length}`);
 }
 
