@@ -1,11 +1,13 @@
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs/promises';
+import { normalizeTitle, ACCESSORY_RE } from './normalize.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 const skuPath = path.join(rootDir, 'src', 'data', 'skus.json');
 const outPath = path.join(rootDir, 'public', 'data', 'prices', 'today.yahoo.json');
+const SD128_CAPACITY_RE = /(128\s?GB|128G)\b/i;
 
 export async function run() {
   const appId = process.env.YAHOO_APP_ID;
@@ -35,6 +37,16 @@ export async function run() {
 
   const items = [];
   let successCount = 0;
+  const skipReasons = {
+    price_null: 0,
+    filter_mismatch: 0,
+    brand_mismatch: 0,
+    capacity_mismatch: 0,
+    accessory: 0,
+    dup_normalized: 0,
+    out_of_range: 0,
+    parse_error: 0
+  };
   for (const sku of skus) {
     try {
       const url = new URL('https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch');
@@ -45,22 +57,95 @@ export async function run() {
       if (!res.ok) throw new Error(`status ${res.status}`);
       const data = await res.json();
       const hits = data.hits || data.Items || data.items || [];
-      const list = hits.map(it => ({
-        title: it.name,
-        shopName: it.seller?.name,
-        itemUrl: it.url,
-        price: Number(it.price) || null,
-        pointRate: Number(it.point?.amount) || Number(it.point) || 0,
-        imageUrl: it.image?.small || it.image?.medium || it.image,
-        itemCode: it.code
-      })).filter(it => typeof it.price === 'number');
-      list.sort((a, b) => a.price - b.price);
-      const best = list[0];
-      if (best) successCount++;
-      items.push({ skuId: sku.id, bestPrice: best?.price ?? null, bestShop: best?.shopName ?? null, list });
+
+      let hasFilterMismatch = false;
+      let hasOutOfRange = false;
+      const normalizedMap = new Map();
+      for (const it of hits) {
+        const rawTitle = it.name || '';
+        const title = rawTitle.toLowerCase();
+        if (sku.filters && sku.filters.some(f => !title.includes(f.toLowerCase()))) {
+          hasFilterMismatch = true;
+          skipReasons.filter_mismatch++;
+          continue;
+        }
+        if (sku.id === 'sd_128') {
+          if (!SD128_CAPACITY_RE.test(title)) {
+            skipReasons.capacity_mismatch++;
+            continue;
+          }
+          if (ACCESSORY_RE.test(title)) {
+            skipReasons.accessory++;
+            continue;
+          }
+        }
+        const price = Number(it.price);
+        if ((sku.minPrice && price < sku.minPrice) || (sku.maxPrice && price > sku.maxPrice)) {
+          hasOutOfRange = true;
+          skipReasons.out_of_range++;
+          continue;
+        }
+        const norm = normalizeTitle(rawTitle);
+        const brandMatch = sku.brandHints && sku.brandHints.some(b => title.includes(b.toLowerCase()));
+        const pointRate = Number(it.point?.amount) || Number(it.point) || 0;
+        const item = {
+          title: it.name,
+          shopName: it.seller?.name,
+          itemUrl: it.url,
+          price,
+          pointRate,
+          imageUrl: it.image?.small || it.image?.medium || it.image,
+          itemCode: it.code,
+          brandMatch
+        };
+        const eff = price - (price * pointRate) / 100;
+        if (normalizedMap.has(norm)) {
+          const prev = normalizedMap.get(norm);
+          const prevEff = prev.price - (prev.price * prev.pointRate) / 100;
+          skipReasons.dup_normalized++;
+          if (eff < prevEff) {
+            normalizedMap.set(norm, item);
+          }
+        } else {
+          normalizedMap.set(norm, item);
+        }
+      }
+      const list = Array.from(normalizedMap.values());
+      list.sort(
+        (a, b) =>
+          b.brandMatch - a.brandMatch ||
+          (a.price - (a.price * a.pointRate) / 100) -
+            (b.price - (b.price * b.pointRate) / 100)
+      );
+      const deduped = [];
+      const seenNorms = new Set();
+      for (const it of list) {
+        if (seenNorms.has(it.norm)) {
+          skipReasons.dup_normalized++;
+          continue;
+        }
+        seenNorms.add(it.norm);
+        deduped.push(it);
+      }
+      const best = deduped[0];
+      if (best) {
+        successCount++;
+      } else {
+        let reason = 'price_null';
+        if (hasFilterMismatch) reason = 'filter_mismatch';
+        else if (hasOutOfRange) reason = 'out_of_range';
+        skipReasons[reason]++;
+      }
+      items.push({
+        skuId: sku.id,
+        bestPrice: best?.price ?? null,
+        bestShop: best?.shopName ?? null,
+        list: deduped.map(({ brandMatch, norm, ...rest }) => rest)
+      });
     } catch (e) {
       console.error('[yahoo] sku failed', sku.id, e);
       items.push({ skuId: sku.id, bestPrice: null, bestShop: null, list: [] });
+      skipReasons.parse_error++;
     }
   }
   if (successCount === 0) {
@@ -86,7 +171,11 @@ export async function run() {
     await fs.mkdir(path.dirname(outPath), { recursive: true });
     await fs.writeFile(outPath, JSON.stringify(out, null, 2));
     console.log('[yahoo] wrote', outPath);
-    console.log(`[yahoo] items: ${items.length}`);
+    const validated = items.filter(it => typeof it.bestPrice === 'number').length;
+    const skipped = items.length - validated;
+    console.log(
+      `[yahoo] validated ${validated}, skipped ${skipped} (price_null:${skipReasons.price_null}, filter_mismatch:${skipReasons.filter_mismatch}, brand_mismatch:${skipReasons.brand_mismatch}, capacity_mismatch:${skipReasons.capacity_mismatch}, accessory:${skipReasons.accessory}, dup_normalized:${skipReasons.dup_normalized}, out_of_range:${skipReasons.out_of_range}, parse_error:${skipReasons.parse_error})`
+    );
   } catch (e) {
     console.error('[yahoo] failed to write output', e);
   }
