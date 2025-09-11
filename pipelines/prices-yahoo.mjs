@@ -96,7 +96,8 @@ export async function run() {
           pointRate,
           imageUrl: it.image?.small || it.image?.medium || it.image,
           itemCode: it.code,
-          brandMatch
+          brandMatch,
+          norm
         };
         const eff = price - (price * pointRate) / 100;
         if (normalizedMap.has(norm)) {
