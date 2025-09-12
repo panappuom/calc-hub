@@ -106,26 +106,33 @@ async function updateHistory(items) {
 export async function run() {
   const prev = await readJson(dataOut);
   const rakutenData = await readJson(rakutenPath);
-  const yahooData = await readJson(yahooPath);
+  const yahooEnabled = process.env.YAHOO_ENABLED !== 'false';
+  const yahooData = yahooEnabled ? await readJson(yahooPath) : null;
   const rakutenStatus = process.env.RAKUTEN_APP_ID ? (rakutenData?.sourceStatus?.rakuten ?? 'fail') : 'fail';
-  const yahooStatus = yahooData?.sourceStatus?.yahoo ?? 'fail';
-  const shouldUpdateHistory = rakutenStatus !== 'fail' || yahooStatus !== 'fail';
+  const yahooStatus = yahooEnabled ? (yahooData?.sourceStatus?.yahoo ?? 'fail') : 'disabled';
+  const shouldUpdateHistory = rakutenStatus !== 'fail' || (yahooEnabled && yahooStatus !== 'fail');
 
   let out;
-  if (rakutenStatus === 'fail' || yahooStatus === 'fail') {
+  if (rakutenStatus === 'fail' || (yahooEnabled && yahooStatus === 'fail')) {
     if (prev) {
       out = { ...prev, sourceStatus: { rakuten: rakutenStatus, yahoo: yahooStatus } };
     } else {
       out = {
         updatedAt: new Date().toISOString(),
-        items: mergeItems(rakutenStatus !== 'fail' ? rakutenData : null, yahooStatus !== 'fail' ? yahooData : null),
+        items: mergeItems(
+          rakutenStatus !== 'fail' ? rakutenData : null,
+          yahooEnabled && yahooStatus !== 'fail' ? yahooData : null
+        ),
         sourceStatus: { rakuten: rakutenStatus, yahoo: yahooStatus }
       };
     }
   } else {
     out = {
       updatedAt: new Date().toISOString(),
-      items: mergeItems(rakutenData, yahooData),
+      items: mergeItems(
+        rakutenStatus !== 'fail' ? rakutenData : null,
+        yahooEnabled && yahooStatus !== 'fail' ? yahooData : null
+      ),
       sourceStatus: { rakuten: rakutenStatus, yahoo: yahooStatus }
     };
   }

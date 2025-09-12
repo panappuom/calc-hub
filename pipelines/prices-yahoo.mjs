@@ -10,9 +10,23 @@ const outPath = path.join(rootDir, 'public', 'data', 'prices', 'today.yahoo.json
 const SD128_CAPACITY_RE = /(128\s?GB|128G)\b/i;
 
 export async function run() {
+  const enabled = process.env.YAHOO_ENABLED !== 'false';
+  console.log(`[yahoo] enabled=${enabled}`);
   const appId = process.env.YAHOO_APP_ID;
   const present = Boolean(appId);
   console.log(`[yahoo] appId present=${present}`);
+  if (!enabled) {
+    console.log('[yahoo] skip: disabled');
+    try {
+      await fs.unlink(outPath);
+      console.log('[yahoo] removed', outPath);
+    } catch (e) {
+      if (e.code !== 'ENOENT') {
+        console.warn('[yahoo] failed to remove output', e);
+      }
+    }
+    return;
+  }
   if (!present) {
     console.log('[yahoo] skip: appId missing');
     try {
@@ -53,9 +67,23 @@ export async function run() {
       url.searchParams.set('appid', appId);
       url.searchParams.set('query', sku.q);
       url.searchParams.set('hits', '20');
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const data = await res.json();
+      let data;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`status ${res.status}`);
+          data = await res.json();
+          break;
+        } catch (e) {
+          if (attempt < 2) {
+            const wait = 500 * (attempt + 1);
+            console.warn(`[yahoo] retry sku ${sku.id} attempt ${attempt + 1}`, e.message);
+            await new Promise(r => setTimeout(r, wait));
+          } else {
+            throw e;
+          }
+        }
+      }
       const hits = data.hits || data.Items || data.items || [];
 
       let hasFilterMismatch = false;
