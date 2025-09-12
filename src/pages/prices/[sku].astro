@@ -36,11 +36,16 @@ if (!bestRecommended && list.length && skuInfo?.brandHints?.length) {
 }
 function formatPrice(it) {
   if (!it) return '';
+  return `${it.price}円`;
+}
+
+function formatSummary(it) {
+  if (!it) return '';
   if (it.pointRate) {
     const eff = Math.round(it.price * (100 - it.pointRate) / 100);
-    return `${it.price}円（ポイント${it.pointRate}%で実質${eff}円）`;
+    return `${formatPrice(it)}（ポイント${it.pointRate}%で実質${eff}円）`;
   }
-  return `${it.price}円`;
+  return formatPrice(it);
 }
 
 export function getStaticPaths() {
@@ -78,12 +83,12 @@ export function getStaticPaths() {
           <div>
             <h2>最安情報</h2>
             <ul>
-              <li>今日の最安: {bestToday ? `${formatPrice(bestToday)} (${bestToday.shopName})` : 'データ少'}</li>
+              <li>今日の最安: {bestToday ? `${formatSummary(bestToday)} (${bestToday.shopName})` : 'データ少'}</li>
               {skuInfo?.brandHints?.length && (
                 <li>
                   推奨最安（ブランド一致優先）:
                   {bestRecommended
-                    ? `${formatPrice(bestRecommended)} (${bestRecommended.shopName})`
+                    ? `${formatSummary(bestRecommended)} (${bestRecommended.shopName})`
                     : '該当なし'}
                 </li>
               )}
@@ -92,7 +97,12 @@ export function getStaticPaths() {
           <button id="sort-toggle">実質価格順に切替</button>
           <table id="price-table">
             <thead>
-              <tr><th>ショップ</th><th>価格</th><th>実質価格<br/><span class="small">（ポイント考慮の試算）</span></th></tr>
+              <tr>
+                <th>ショップ</th>
+                <th>価格</th>
+                <th>ポイント</th>
+                <th>実質価格<br/><span class="small">（ポイント考慮の試算）</span></th>
+              </tr>
             </thead>
             <tbody>
               {list.map(it => {
@@ -101,6 +111,7 @@ export function getStaticPaths() {
                   <tr data-price={it.price} data-eff={eff}>
                     <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
                     <td>{formatPrice(it)}</td>
+                    <td>{it.pointRate ? `${it.pointRate}%` : '-'}</td>
                     <td>{eff}円</td>
                   </tr>
                 );
