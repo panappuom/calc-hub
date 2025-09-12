@@ -104,21 +104,13 @@ export async function run() {
           normalizedMap.set(key, item);
         }
       }
-      const list = Array.from(normalizedMap.values());
-      list.sort(
+      const deduped = Array.from(normalizedMap.values());
+      deduped.sort(
         (a, b) =>
           b.brandMatch - a.brandMatch ||
           (a.price - (a.price * a.pointRate) / 100) -
             (b.price - (b.price * b.pointRate) / 100)
       );
-      const deduped = [];
-      const seen = new Set();
-      for (const it of list) {
-        const key = `${it.norm}__${it.shopName}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        deduped.push(it);
-      }
       const best = deduped[0];
       if (best) {
         successCount++;
