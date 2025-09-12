@@ -3,6 +3,8 @@ import "../../styles/global.css";
 import skus from "../../data/skus.json";
 
 let data;
+let rakutenData;
+let yahooData;
 try {
   const url = new URL(
     import.meta.env.BASE_URL + "data/prices/today.json",
@@ -13,6 +15,26 @@ try {
     data = await res.json();
   }
 } catch {}
+try {
+  const url = new URL(
+    import.meta.env.BASE_URL + "data/prices/today.rakuten.json",
+    Astro.site
+  );
+  const res = await fetch(url);
+  if (res.ok) {
+    rakutenData = await res.json();
+  }
+} catch {}
+try {
+  const url = new URL(
+    import.meta.env.BASE_URL + "data/prices/today.yahoo.json",
+    Astro.site
+  );
+  const res = await fetch(url);
+  if (res.ok) {
+    yahooData = await res.json();
+  }
+} catch {}
 const { sku } = Astro.params;
 const skuInfo = skus.find(s => s.id === sku);
 const priceInfo = data?.items?.find(i => i.skuId === sku);
@@ -21,6 +43,12 @@ const updatedJst = data?.updatedAt
   : null;
 
 const list = priceInfo?.list ? [...priceInfo.list].sort((a, b) => a.price - b.price) : [];
+const rakutenList = rakutenData?.items?.find(i => i.skuId === sku)?.list?.sort((a, b) => a.price - b.price) ?? [];
+const yahooList = yahooData?.items?.find(i => i.skuId === sku)?.list?.sort((a, b) => a.price - b.price) ?? [];
+const sections = [
+  { name: 'Rakuten', key: 'rakuten', list: rakutenList, status: data?.sourceStatus?.rakuten ?? 'fail' },
+  { name: 'Yahoo', key: 'yahoo', list: yahooList, status: data?.sourceStatus?.yahoo ?? 'fail' }
+];
 const bestToday = list.length
   ? list.reduce((min, it) => (it.price < min.price ? it : min), list[0])
   : null;
@@ -58,6 +86,12 @@ export function getStaticPaths() {
     <meta name="viewport" content="width=device-width" />
     <base href={import.meta.env.BASE_URL} />
     <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
+    <style>
+      .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:12px;color:#fff}
+      .ok{background:#16a34a}
+      .partial{background:#d97706}
+      .fail{background:#dc2626}
+    </style>
   </head>
   <body>
     <div class="wrap">
@@ -94,30 +128,41 @@ export function getStaticPaths() {
               )}
             </ul>
           </div>
-          <button id="sort-toggle">実質価格順に切替</button>
-          <table id="price-table">
-            <thead>
-              <tr>
-                <th>ショップ</th>
-                <th>価格</th>
-                <th>ポイント</th>
-                <th>実質価格<br/><span class="small">（ポイント考慮の試算）</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map(it => {
-                const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
-                return (
-                  <tr data-price={it.price} data-eff={eff}>
-                    <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
-                    <td>{formatPrice(it)}</td>
-                    <td>{it.pointRate ? `${it.pointRate}%` : '-'}</td>
-                    <td>{eff}円</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {sections.map(sec => (
+            <div class="price-section">
+              <h2>{sec.name} <span class={`badge ${sec.status}`}>{sec.status}</span></h2>
+              {sec.list.length ? (
+                <>
+                  <button class="sort-toggle">実質価格順に切替</button>
+                  <table class="price-table">
+                    <thead>
+                      <tr>
+                        <th>ショップ</th>
+                        <th>価格</th>
+                        <th>ポイント</th>
+                        <th>実質価格<br/><span class="small">（ポイント考慮の試算）</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sec.list.map(it => {
+                        const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
+                        return (
+                          <tr data-price={it.price} data-eff={eff}>
+                            <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
+                            <td>{formatPrice(it)}</td>
+                            <td>{it.pointRate ? `${it.pointRate}%` : '-'}</td>
+                            <td>{eff}円</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <p>データ少</p>
+              )}
+            </div>
+          ))}
           <p class="small">※実質価格はポイント考慮の試算</p>
           <p class="small">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
           <h2>価格推移 (30日)</h2>
@@ -125,21 +170,25 @@ export function getStaticPaths() {
           <p id="chart-msg" class="small"></p>
           <p class="small">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
           <script>
-            const toggle = document.getElementById('sort-toggle');
-            const table = document.getElementById('price-table');
-            const tbody = table.querySelector('tbody');
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            let byEff = false;
-            function sortRows() {
-              rows.sort((a, b) => {
-                const k = byEff ? 'eff' : 'price';
-                return Number(a.dataset[k]) - Number(b.dataset[k]);
-              }).forEach(r => tbody.appendChild(r));
-            }
-            toggle.addEventListener('click', () => {
-              byEff = !byEff;
-              sortRows();
-              toggle.textContent = byEff ? '価格順に切替' : '実質価格順に切替';
+            document.querySelectorAll('.price-section').forEach(sec => {
+              const toggle = sec.querySelector('.sort-toggle');
+              const tbody = sec.querySelector('tbody');
+              if (!toggle || !tbody) return;
+              const rows = Array.from(tbody.querySelectorAll('tr'));
+              let byEff = false;
+              function sortRows() {
+                rows
+                  .sort((a, b) => {
+                    const k = byEff ? 'eff' : 'price';
+                    return Number(a.dataset[k]) - Number(b.dataset[k]);
+                  })
+                  .forEach(r => tbody.appendChild(r));
+              }
+              toggle.addEventListener('click', () => {
+                byEff = !byEff;
+                sortRows();
+                toggle.textContent = byEff ? '価格順に切替' : '実質価格順に切替';
+              });
             });
           </script>
           <script>
