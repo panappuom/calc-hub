@@ -21,6 +21,12 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
     <meta name="viewport" content="width=device-width" />
     <base href={import.meta.env.BASE_URL} />
     <title>今日の最安“候補”</title>
+    <style>
+      .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:12px;color:#fff}
+      .ok{background:#16a34a}
+      .partial{background:#d97706}
+      .fail{background:#dc2626}
+    </style>
   </head>
   <body>
     <div class="wrap">
@@ -31,6 +37,14 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
       {data ? (
         <>
           <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
+          {data.sourceStatus && (
+            <p class="small">
+              Rakuten:
+              <span class={`badge ${data.sourceStatus.rakuten}`}>{data.sourceStatus.rakuten}</span>
+              &nbsp;Yahoo:
+              <span class={`badge ${data.sourceStatus.yahoo}`}>{data.sourceStatus.yahoo}</span>
+            </p>
+          )}
           <ul>
             {data.items.map(it => (
               <li>
