@@ -88,28 +88,38 @@ export async function run() {
           pointRate,
           imageUrl: it.mediumImageUrls?.[0]?.imageUrl,
           itemCode: it.itemCode,
-          brandMatch
+          brandMatch,
+          norm
         };
         const eff = price - (price * pointRate) / 100;
-        if (normalizedMap.has(norm)) {
-          const prev = normalizedMap.get(norm);
+        const key = `${norm}__${it.shopName}`;
+        if (normalizedMap.has(key)) {
+          const prev = normalizedMap.get(key);
           const prevEff = prev.price - (prev.price * prev.pointRate) / 100;
           skipReasons.dup_normalized++;
           if (eff < prevEff) {
-            normalizedMap.set(norm, item);
+            normalizedMap.set(key, item);
           }
         } else {
-          normalizedMap.set(norm, item);
+          normalizedMap.set(key, item);
         }
       }
-      const filtered = Array.from(normalizedMap.values());
-      filtered.sort(
+      const list = Array.from(normalizedMap.values());
+      list.sort(
         (a, b) =>
           b.brandMatch - a.brandMatch ||
           (a.price - (a.price * a.pointRate) / 100) -
             (b.price - (b.price * b.pointRate) / 100)
       );
-      const best = filtered[0];
+      const deduped = [];
+      const seen = new Set();
+      for (const it of list) {
+        const key = `${it.norm}__${it.shopName}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(it);
+      }
+      const best = deduped[0];
       if (best) {
         successCount++;
       } else {
