@@ -152,7 +152,7 @@ export function getStaticPaths() {
                       <th>ショップ</th>
                       <th>価格</th>
                       <th>ポイント</th>
-                      <th>実質価格<br/><span class="small">（ポイント考慮の試算）</span></th>
+                      <th>実質価格<br/><span class="small">（ポイント反映）</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -192,7 +192,7 @@ export function getStaticPaths() {
                         <th>ショップ</th>
                         <th>価格</th>
                         <th>ポイント</th>
-                        <th>実質価格<br/><span class="small">（ポイント考慮の試算）</span></th>
+                        <th>実質価格<br/><span class="small">（ポイント反映）</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -215,7 +215,7 @@ export function getStaticPaths() {
               )}
             </div>
           ))}
-          <p class="small">※実質価格はポイント考慮の試算</p>
+          <p class="small">※実質価格はポイント考慮の試算です。</p>
           <p class="small">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
           <h2>価格推移 (30日)</h2>
           <canvas id="chart" width="600" height="200" data-sku={sku}></canvas>
