@@ -45,6 +45,10 @@ const updatedJst = data?.updatedAt
 const list = priceInfo?.list ? [...priceInfo.list].sort((a, b) => a.price - b.price) : [];
 const rakutenList = rakutenData?.items?.find(i => i.skuId === sku)?.list?.sort((a, b) => a.price - b.price) ?? [];
 const yahooList = yahooData?.items?.find(i => i.skuId === sku)?.list?.sort((a, b) => a.price - b.price) ?? [];
+const allList = [
+  ...rakutenList.map(it => ({ ...it, store: '楽天' })),
+  ...yahooList.map(it => ({ ...it, store: 'Yahoo' }))
+].sort((a, b) => a.price - b.price);
 const sections = [
   { name: 'Rakuten', key: 'rakuten', list: rakutenList, status: data?.sourceStatus?.rakuten ?? 'fail' },
   { name: 'Yahoo', key: 'yahoo', list: yahooList, status: data?.sourceStatus?.yahoo ?? 'fail' }
@@ -91,6 +95,9 @@ export function getStaticPaths() {
       .ok{background:#16a34a}
       .partial{background:#d97706}
       .fail{background:#dc2626}
+      .tabs{display:flex;gap:4px;margin:1em 0}
+      .tabs button{padding:4px 8px;border:1px solid #ccc;background:#f3f3f3;cursor:pointer}
+      .tabs button.active{background:#ddd}
     </style>
   </head>
   <body>
@@ -120,7 +127,7 @@ export function getStaticPaths() {
               <li>今日の最安: {bestToday ? `${formatSummary(bestToday)} (${bestToday.shopName})` : 'データ少'}</li>
               {skuInfo?.brandHints?.length && (
                 <li>
-                  推奨最安（ブランド一致優先）:
+                  推奨安（ブランド一致優先）:
                   {bestRecommended
                     ? `${formatSummary(bestRecommended)} (${bestRecommended.shopName})`
                     : '該当なし'}
@@ -128,8 +135,48 @@ export function getStaticPaths() {
               )}
             </ul>
           </div>
+          <div class="tabs">
+            <button data-tab="all" class="active">全ストア</button>
+            <button data-tab="rakuten">楽天のみ</button>
+            <button data-tab="yahoo">Yahooのみ</button>
+          </div>
+          <div class="price-section tab-content" data-tab="all">
+            <h2>全ストア</h2>
+            {allList.length ? (
+              <>
+                <button class="sort-toggle">実質価格順に切替</button>
+                <table class="price-table">
+                  <thead>
+                    <tr>
+                      <th>ストア</th>
+                      <th>ショップ</th>
+                      <th>価格</th>
+                      <th>ポイント</th>
+                      <th>実質価格<br/><span class="small">（ポイント考慮の試算）</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allList.map(it => {
+                      const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
+                      return (
+                        <tr data-price={it.price} data-eff={eff}>
+                          <td>{it.store}</td>
+                          <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
+                          <td>{formatPrice(it)}</td>
+                          <td>{it.pointRate ? `${it.pointRate}%` : '-'}</td>
+                          <td>{eff}円</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            ) : (
+              <p>データ少</p>
+            )}
+          </div>
           {sections.map(sec => (
-            <div class="price-section">
+            <div class="price-section tab-content" data-tab={sec.key} style="display:none">
               <h2>{sec.name} <span class={`badge ${sec.status}`}>{sec.status}</span></h2>
               {sec.list.length ? (
                 <>
@@ -169,6 +216,19 @@ export function getStaticPaths() {
           <canvas id="chart" width="600" height="200" data-sku={sku}></canvas>
           <p id="chart-msg" class="small"></p>
           <p class="small">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
+          <script>
+            const tabButtons = document.querySelectorAll('.tabs button');
+            const tabSections = document.querySelectorAll('.tab-content');
+            tabButtons.forEach(btn => {
+              btn.addEventListener('click', () => {
+                const target = btn.dataset.tab;
+                tabButtons.forEach(b => b.classList.toggle('active', b === btn));
+                tabSections.forEach(sec => {
+                  sec.style.display = sec.dataset.tab === target ? '' : 'none';
+                });
+              });
+            });
+          </script>
           <script>
             document.querySelectorAll('.price-section').forEach(sec => {
               const toggle = sec.querySelector('.sort-toggle');
