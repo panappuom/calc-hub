@@ -3,6 +3,7 @@ import "../../styles/global.css";
 import skus from "../../data/skus.json";
 
 let data;
+let sourceStatus = "fail";
 try {
   const url = new URL(
     import.meta.env.BASE_URL + "data/prices/today.json",
@@ -13,6 +14,16 @@ try {
     data = await res.json();
   }
 } catch {}
+if (data?.sourceStatus) {
+  const values = Object.values(data.sourceStatus);
+  if (values.every(v => v === "ok")) {
+    sourceStatus = "ok";
+  } else if (values.every(v => v === "fail")) {
+    sourceStatus = "fail";
+  } else {
+    sourceStatus = "partial";
+  }
+}
 const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
 ---
 <html lang="ja">
@@ -22,6 +33,7 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
     <base href={import.meta.env.BASE_URL} />
     <title>今日の最安“候補”</title>
     <style>
+      .banner{background:#fef9c3;color:#92400e;padding:8px 12px;border-radius:4px;margin-bottom:8px;font-size:14px}
       .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:12px;color:#fff}
       .ok{background:#16a34a}
       .partial{background:#d97706}
@@ -30,7 +42,14 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
   </head>
   <body>
     <div class="wrap">
-        <a href="./" class="small">← トップ</a>
+      {sourceStatus !== "ok" && (
+        <div role="status" aria-live="polite" class="banner" data-source-status={sourceStatus}>
+          ⚠︎ {sourceStatus === "partial"
+            ? "一部のデータが取得できませんでした。表示は最新の取得分です。"
+            : "一部ソースの取得に失敗しました。別ソースまたは前回データで表示しています。"}
+        </div>
+      )}
+      <a href="./" class="small">← トップ</a>
       <h1>今日の最安“候補”</h1>
       <p class="small">対象カテゴリから毎日、自動で候補を抽出し、価格とポイント相当を目安に並べ替えています。</p>
       <p class="small">表示価格は取得時点の参考値です。購入前に必ずリンク先の最新情報をご確認ください。</p>
