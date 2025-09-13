@@ -177,12 +177,7 @@ export function getStaticPaths() {
           </div>
           {sections.map(sec => (
             <div class="price-section tab-content" data-tab={sec.key} style="display:none">
-              <h2>
-                {sec.name}
-                {sec.status !== 'ok' && (
-                  <span class={`badge ${sec.status}`}>{sec.status}</span>
-                )}
-              </h2>
+              <h2>{sec.name} <span class={`badge ${sec.status}`}>{sec.status}</span></h2>
               {sec.list.length ? (
                 <>
                   <button class="sort-toggle">実質価格順に切替</button>
