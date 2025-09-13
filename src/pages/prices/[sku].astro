@@ -49,9 +49,10 @@ const allList = [
   ...rakutenList.map(it => ({ ...it, store: '楽天' })),
   ...yahooList.map(it => ({ ...it, store: 'Yahoo' }))
 ].sort((a, b) => a.price - b.price);
+const hasAllPoints = allList.some(it => it.pointRate);
 const sections = [
-  { name: 'Rakuten', key: 'rakuten', list: rakutenList, status: data?.sourceStatus?.rakuten ?? 'fail' },
-  { name: 'Yahoo', key: 'yahoo', list: yahooList, status: data?.sourceStatus?.yahoo ?? 'fail' }
+  { name: 'Rakuten', key: 'rakuten', list: rakutenList, status: data?.sourceStatus?.rakuten ?? 'fail', hasPoints: rakutenList.some(it => it.pointRate) },
+  { name: 'Yahoo', key: 'yahoo', list: yahooList, status: data?.sourceStatus?.yahoo ?? 'fail', hasPoints: yahooList.some(it => it.pointRate) }
 ];
 const bestToday = list.length
   ? list.reduce((min, it) => (it.price < min.price ? it : min), list[0])
@@ -144,7 +145,7 @@ export function getStaticPaths() {
             <h2>全ストア</h2>
             {allList.length ? (
               <>
-                <button class="sort-toggle">実質価格順に切替</button>
+                {hasAllPoints && <button class="sort-toggle">実質価格順に切替</button>}
                 <table class="price-table">
                   <thead>
                     <tr>
@@ -185,7 +186,7 @@ export function getStaticPaths() {
               </h2>
               {sec.list.length ? (
                 <>
-                  <button class="sort-toggle">実質価格順に切替</button>
+                  {sec.hasPoints && <button class="sort-toggle">実質価格順に切替</button>}
                   <table class="price-table">
                     <thead>
                       <tr>
