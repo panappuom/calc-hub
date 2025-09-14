@@ -11,3 +11,5 @@ h1,h2{line-height:1.2}
 input,select{background:#0f1320;color:var(--fg);border:1px solid #242b3a;border-radius:8px;padding:8px;width:100%}
 label{display:block;margin-top:12px}
 .result{margin-top:12px;padding:10px;background:#0f1420;border:1px solid #202638;border-radius:8px}
+.notice--warn{background:#451a03;color:#fcd34d;padding:8px 12px;border-radius:4px;margin-bottom:8px;font-size:14px;line-height:1.4}
+.status-icon--warn{margin-left:4px;font-size:0.9em;vertical-align:middle;cursor:help;line-height:1}

@@ -96,7 +96,6 @@ export function getStaticPaths() {
     <base href={import.meta.env.BASE_URL} />
     <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
     <style>
-      .warn-icon{font-size:0.9em;margin-left:4px;cursor:help;vertical-align:middle}
       .tabs{display:flex;gap:4px;margin:1em 0}
       .tabs button{padding:4px 8px;border:1px solid #ccc;background:#f3f3f3;cursor:pointer}
       .tabs button.active{background:#ddd}
@@ -182,7 +181,7 @@ export function getStaticPaths() {
               <h2>
                 {sec.name}
                 {sec.status !== 'ok' && (
-                  <span class="warn-icon" aria-label={statusMessages[sec.status]} title={statusMessages[sec.status]}>⚠️</span>
+                  <span class="status-icon--warn" aria-label={statusMessages[sec.status]} title={statusMessages[sec.status]}>⚠️</span>
                 )}
               </h2>
               {sec.list.length ? (
