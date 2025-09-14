@@ -1,3 +1,4 @@
+<!-- Dummy comment for PR testing -->
 <!-- CI/CD flow test comment -->
 # 自動化工場プロジェクト方針（v0.3）
 > 目的：**完全放置で回る“小さな収益装置”を量産**し、合算で**月15万円**を目指す。  
