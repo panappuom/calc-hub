@@ -24,31 +24,24 @@ async function readJson(p) {
   }
 }
 
-function mergeItems(...sources) {
-  const map = new Map();
-  for (const src of sources) {
-    if (!src) continue;
-    for (const it of src.items || []) {
-      if (!map.has(it.skuId)) {
-        map.set(it.skuId, { skuId: it.skuId, list: [] });
-      }
-      const target = map.get(it.skuId);
-      if (Array.isArray(it.list)) {
-        target.list.push(...it.list.filter(l => typeof l.price === 'number'));
-      }
+async function readPrevToday() {
+  try {
+    const url = new URL('data/prices/today.json', publicBase);
+    url.searchParams.set('t', Date.now().toString());
+    const res = await fetch(url);
+    if (res.ok) {
+      console.log('[merge] prev: fetched from public URL', url.toString());
+      return await res.json();
     }
+    console.warn('[merge] prev: fetch failed', url.toString(), res.status);
+  } catch (e) {
+    console.warn('[merge] prev: fetch error', e);
   }
-  const items = Array.from(map.values()).map(it => {
-    it.list.sort((a, b) => a.price - b.price);
-    const best = it.list[0];
-    return {
-      skuId: it.skuId,
-      bestPrice: best?.price ?? null,
-      bestShop: best?.shopName ?? null,
-      list: it.list
-    };
-  });
-  return items;
+  const local = await readJson(dataOut);
+  if (local) {
+    console.log('[merge] prev: read from local file', dataOut);
+  }
+  return local;
 }
 
 async function updateHistory(items) {
@@ -104,7 +97,7 @@ async function updateHistory(items) {
 }
 
 export async function run() {
-  const prev = await readJson(dataOut);
+  const prev = await readPrevToday();
   const rakutenData = await readJson(rakutenPath);
   const yahooEnabled = process.env.YAHOO_ENABLED !== 'false';
   const yahooData = yahooEnabled ? await readJson(yahooPath) : null;
@@ -112,27 +105,38 @@ export async function run() {
   const yahooStatus = yahooEnabled ? (yahooData?.sourceStatus?.yahoo ?? 'fail') : 'disabled';
   const shouldUpdateHistory = rakutenStatus !== 'fail' || (yahooEnabled && yahooStatus !== 'fail');
 
-  let out;
-  if (rakutenStatus === 'fail' || (yahooEnabled && yahooStatus === 'fail')) {
-    if (prev) {
-      out = { ...prev, sourceStatus: { rakuten: rakutenStatus, yahoo: yahooStatus } };
-    } else {
-      out = {
-        updatedAt: new Date().toISOString(),
-        items: mergeItems(
-          rakutenStatus !== 'fail' ? rakutenData : null,
-          yahooEnabled && yahooStatus !== 'fail' ? yahooData : null
-        ),
-        sourceStatus: { rakuten: rakutenStatus, yahoo: yahooStatus }
-      };
+  const map = new Map(prev?.items?.map(it => [it.skuId, it]) || []);
+  const add = src => {
+    for (const it of src.items || []) {
+      const list = Array.isArray(it.list)
+        ? it.list.filter(l => typeof l.price === 'number')
+        : [];
+      list.sort((a, b) => a.price - b.price);
+      const best = list[0];
+      map.set(it.skuId, {
+        skuId: it.skuId,
+        bestPrice: best?.price ?? null,
+        bestShop: best?.shopName ?? null,
+        list
+      });
     }
+  };
+  if (rakutenStatus !== 'fail' && rakutenData) add(rakutenData);
+  if (yahooEnabled && yahooStatus !== 'fail' && yahooData) add(yahooData);
+
+  let out;
+  if (map.size > 0 && (rakutenStatus !== 'fail' || (yahooEnabled && yahooStatus !== 'fail'))) {
+    out = {
+      updatedAt: new Date().toISOString(),
+      items: Array.from(map.values()),
+      sourceStatus: { rakuten: rakutenStatus, yahoo: yahooStatus }
+    };
+  } else if (prev) {
+    out = { ...prev, sourceStatus: { rakuten: rakutenStatus, yahoo: yahooStatus } };
   } else {
     out = {
       updatedAt: new Date().toISOString(),
-      items: mergeItems(
-        rakutenStatus !== 'fail' ? rakutenData : null,
-        yahooEnabled && yahooStatus !== 'fail' ? yahooData : null
-      ),
+      items: [],
       sourceStatus: { rakuten: rakutenStatus, yahoo: yahooStatus }
     };
   }
