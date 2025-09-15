@@ -10,13 +10,15 @@ const outPath = path.join(rootDir, 'public', 'data', 'prices', 'today.yahoo.json
 const SD128_CAPACITY_RE = /(128\s?GB|128G)\b/i;
 
 export async function run() {
-  const enabled = process.env.YAHOO_ENABLED !== 'false';
-  console.log(`[yahoo] enabled=${enabled}`);
+  const rawEnabled = process.env.YAHOO_ENABLED;
+  const present = rawEnabled !== undefined;
+  const enabled = rawEnabled !== 'false';
+  console.log(`[yahoo] env present=${present} enabled=${enabled}`);
   const appId = process.env.YAHOO_APP_ID;
-  const present = Boolean(appId);
-  console.log(`[yahoo] appId present=${present}`);
+  const appIdPresent = Boolean(appId);
+  console.log(`[yahoo] appId present=${appIdPresent}`);
   if (!enabled) {
-    console.log('[yahoo] skip: disabled');
+    console.log('[yahoo] disabled via env');
     try {
       await fs.unlink(outPath);
       console.log('[yahoo] removed', outPath);
@@ -27,7 +29,7 @@ export async function run() {
     }
     return;
   }
-  if (!present) {
+  if (!appIdPresent) {
     console.log('[yahoo] skip: appId missing');
     try {
       await fs.unlink(outPath);
