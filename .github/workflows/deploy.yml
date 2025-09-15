@@ -29,6 +29,7 @@ jobs:
         env:
           RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
           YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
+          YAHOO_ENABLED: ${{ secrets.YAHOO_ENABLED }}
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with: { path: "dist" }
