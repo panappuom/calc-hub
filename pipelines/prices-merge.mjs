@@ -112,12 +112,15 @@ export async function run() {
         ? it.list.filter(l => typeof l.price === 'number')
         : [];
       list.sort((a, b) => a.price - b.price);
-      const best = list[0];
+      const existing = map.get(it.skuId);
+      const mergedList = [...(existing?.list || []), ...list];
+      mergedList.sort((a, b) => a.price - b.price);
+      const best = mergedList[0];
       map.set(it.skuId, {
         skuId: it.skuId,
         bestPrice: best?.price ?? null,
         bestShop: best?.shopName ?? null,
-        list
+        list: mergedList
       });
     }
   };
