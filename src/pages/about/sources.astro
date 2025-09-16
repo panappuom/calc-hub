@@ -1,0 +1,28 @@
+---
+import "../../styles/global.css";
+import Footer from "../../components/Footer.astro";
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <base href={import.meta.env.BASE_URL} />
+    <title>データ出典と更新について</title>
+  </head>
+  <body>
+    <div class="wrap">
+      <a href="./" class="small">← トップ</a>
+      <h1>データ出典と更新について</h1>
+      <p>本サイトはメーカーや公式ストアの情報を、公式RSS・公式APIを中心に毎日自動で取り込み、必要に応じて最新成功分を表示しています。</p>
+      <h2>ノイズ除外の基準</h2>
+      <ul>
+        <li>求人・提供／PRなど、価格比較に直接関係しない投稿</li>
+        <li>重複告知や機械的な再投稿</li>
+        <li>価格・在庫など判断材料が欠けている告知</li>
+      </ul>
+      <p class="small">価格・在庫は取得時点の参考値です。最新情報は各リンク先をご確認ください。</p>
+      <p class="small">解析や取得方法など技術的な詳細は予告なく調整される場合があります。</p>
+    </div>
+    <Footer />
+  </body>
+</html>
