@@ -3,6 +3,7 @@ node_modules/
 dist/
 .astro/
 .vite/
+.lighthouseci/
 
 # エディタ関連
 .vscode/

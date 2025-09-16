@@ -1,0 +1,40 @@
+{
+  "ci": {
+    "collect": {
+      "staticDistDir": "dist",
+      "numberOfRuns": 1,
+      "url": [
+        "index.html",
+        "prices/index.html",
+        "prices/sd_128/index.html",
+        "prices/ssd_1tb/index.html"
+      ],
+      "settings": {
+        "onlyCategories": [
+          "accessibility"
+        ],
+        "chromeFlags": "--headless=new --no-sandbox",
+        "preset": "desktop"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:accessibility": [
+          "error",
+          {
+            "minScore": 0.95
+          }
+        ],
+        "color-contrast": "warn",
+        "link-name": "warn",
+        "image-alt": "warn",
+        "aria-required-attr": "warn",
+        "html-has-lang": "warn"
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci"
+    }
+  }
+}
