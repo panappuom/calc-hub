@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import Footer from "../components/Footer.astro";
 import data from "../data/deals.json";
 const items = (data?.items ?? []).slice(0, 100);
 function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
@@ -27,5 +28,6 @@ function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
       </div>
       <p class="small" style="margin-top:8px">価格・在庫は変動します。最新情報はリンク先でご確認ください。</p>
     </div>
+    <Footer />
   </body>
 </html>
