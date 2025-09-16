@@ -1,0 +1,13 @@
+---
+import { getLastUpdated } from "../lib/last-updated.mjs";
+
+const { formatted } = await getLastUpdated();
+---
+<footer class="wrap site-footer small">
+  <p>最終更新 {formatted}</p>
+  <p>
+    <a href="./about/sources/">データ出典</a>
+    <span aria-hidden="true"> / </span>
+    <a href="./about/affiliate/">アフィリエイトについて</a>
+  </p>
+</footer>
