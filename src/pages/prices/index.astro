@@ -33,12 +33,6 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
     <meta name="viewport" content="width=device-width" />
     <base href={import.meta.env.BASE_URL} />
     <title>今日の最安“候補”</title>
-    <style>
-      .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:12px;color:#fff}
-      .ok{background:#16a34a}
-      .partial{background:#d97706}
-      .fail{background:#dc2626}
-    </style>
   </head>
   <body>
     <div class="wrap">
@@ -59,9 +53,21 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
           {data.sourceStatus && (
             <p class="small">
               Rakuten:
-              <span class={`badge ${data.sourceStatus.rakuten}`}>{data.sourceStatus.rakuten}</span>
+              <span
+                class={`badge status-${data.sourceStatus.rakuten ?? 'unknown'}`}
+                data-source="rakuten"
+                data-status={data.sourceStatus.rakuten ?? 'unknown'}
+              >
+                {data.sourceStatus.rakuten}
+              </span>
               &nbsp;Yahoo:
-              <span class={`badge ${data.sourceStatus.yahoo}`}>{data.sourceStatus.yahoo}</span>
+              <span
+                class={`badge status-${data.sourceStatus.yahoo ?? 'unknown'}`}
+                data-source="yahoo"
+                data-status={data.sourceStatus.yahoo ?? 'unknown'}
+              >
+                {data.sourceStatus.yahoo}
+              </span>
             </p>
           )}
           <ul>
