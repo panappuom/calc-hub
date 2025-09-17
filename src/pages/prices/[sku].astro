@@ -82,6 +82,13 @@ function formatSummary(it) {
   return formatPrice(it);
 }
 
+function getShopLinkDescription(name) {
+  if (!name) {
+    return 'ショップで商品の詳細を確認できます（新しいタブで開きます）';
+  }
+  return `${name}で商品の詳細を確認できます（新しいタブで開きます）`;
+}
+
 export function getStaticPaths() {
   return skus.map(s => ({ params: { sku: s.id } }));
 }
@@ -154,7 +161,19 @@ export function getStaticPaths() {
                       return (
                         <tr data-price={it.price} data-eff={eff}>
                           <td>{it.store}</td>
-                          <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
+                          <td>
+                            {it.shopName}
+                            <a
+                              href={it.itemUrl}
+                              target="_blank"
+                              rel="nofollow noopener"
+                              title={getShopLinkDescription(it.shopName)}
+                              aria-label={getShopLinkDescription(it.shopName)}
+                            >
+                              ショップで確認
+                              <span aria-hidden="true" class="external-link-icon">↗</span>
+                            </a>
+                          </td>
                           <td>{formatPrice(it)}</td>
                           <td>{it.pointRate ? `${it.pointRate}%` : '-'}</td>
                           <td>{eff}円</td>
@@ -193,7 +212,19 @@ export function getStaticPaths() {
                         const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
                         return (
                           <tr data-price={it.price} data-eff={eff}>
-                            <td>{it.shopName} <a href={it.itemUrl} target="_blank" rel="nofollow noopener">ショップで確認</a></td>
+                            <td>
+                              {it.shopName}
+                              <a
+                                href={it.itemUrl}
+                                target="_blank"
+                                rel="nofollow noopener"
+                                title={getShopLinkDescription(it.shopName)}
+                                aria-label={getShopLinkDescription(it.shopName)}
+                              >
+                                ショップで確認
+                                <span aria-hidden="true" class="external-link-icon">↗</span>
+                              </a>
+                            </td>
                             <td>{formatPrice(it)}</td>
                             <td>{it.pointRate ? `${it.pointRate}%` : '-'}</td>
                             <td>{eff}円</td>
