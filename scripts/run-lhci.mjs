@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { rmSync } from 'node:fs';
 
+import { generateLhciUrls } from './generate-lhci-urls.mjs';
+
 const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(currentDir, '..');
@@ -58,7 +60,22 @@ const env = {
   CHROME_PATH: chromePath,
 };
 
-runNpx(['lhci', 'collect', `--config=${configPath}`], {
+const urls = await generateLhciUrls();
+
+if (urls.length === 0) {
+  console.warn('No URLs resolved for LHCI collect; falling back to configuration defaults.');
+}
+
+if (urls.length > 0) {
+  console.log('LHCI will collect reports for the following URLs:');
+  for (const url of urls) {
+    console.log(`  - ${url}`);
+  }
+}
+
+const collectArgs = ['lhci', 'collect', `--config=${configPath}`, ...urls.map((url) => `--url=${url}`)];
+
+runNpx(collectArgs, {
   env,
 });
 
