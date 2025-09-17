@@ -19,7 +19,13 @@ function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
       <p class="small">主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は除外。</p>
       <div class="grid" style="margin-top:8px">
         {items.map((it) => (
-          <a class="card" href={it.link} target="_blank" rel="nofollow noopener">
+          <a
+            class="card"
+            href={it.link}
+            target="_blank"
+            rel="nofollow noopener"
+            title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
+          >
             <h2 style="margin:0 0 6px 0">{it.title}</h2>
             <p class="small" style="margin:0 0 6px 0">{it.source} / {fmt(it.date)}</p>
             {it.description && <p style="margin:0">{it.description}</p>}
