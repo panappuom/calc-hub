@@ -92,11 +92,6 @@ export function getStaticPaths() {
     <meta name="viewport" content="width=device-width" />
     <base href={import.meta.env.BASE_URL} />
     <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
-    <style>
-      .tabs{display:flex;gap:4px;margin:1em 0}
-      .tabs button{padding:4px 8px;border:1px solid #ccc;background:#f3f3f3;cursor:pointer}
-      .tabs button.active{background:#ddd}
-    </style>
   </head>
   <body>
     <div class="wrap">
@@ -134,9 +129,9 @@ export function getStaticPaths() {
             </ul>
           </div>
           <div class="tabs">
-            <button data-tab="all" class="active">全ストア</button>
-            <button data-tab="rakuten">楽天のみ</button>
-            <button data-tab="yahoo">Yahooのみ</button>
+            <button type="button" data-tab="all" class="active">全ストア</button>
+            <button type="button" data-tab="rakuten">楽天のみ</button>
+            <button type="button" data-tab="yahoo">Yahooのみ</button>
           </div>
           <div class="price-section tab-content" data-tab="all">
             <h2>全ストア</h2>
