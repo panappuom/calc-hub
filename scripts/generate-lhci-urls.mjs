@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { execSync } from 'node:child_process';
 import { dirname, extname, isAbsolute, join } from 'node:path';
@@ -136,6 +137,10 @@ export async function generateLhciUrls() {
   let fallbackRequired = false;
 
   for (const file of changedFiles) {
+    if (!existsSync(join(projectRoot, file))) {
+      continue;
+    }
+
     if (shouldIgnoreFile(file)) {
       continue;
     }
