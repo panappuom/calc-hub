@@ -1,5 +1,8 @@
 :root {
   color-scheme: dark;
+  --wrap-max: 980px;
+  --wrap-x: clamp(16px, 5vw, 24px);
+  --wrap-y: 24px;
   --bg-default: #0b0d12;
   --bg-surface: #141823;
   --border-subtle: #1f2432;
@@ -39,6 +42,7 @@ body {
   background: var(--bg-default);
   color: var(--fg-default);
   font: 16px/1.6 system-ui, Segoe UI, Meiryo, sans-serif;
+  overflow-x: clip;
 }
 
 :focus-visible {
@@ -64,9 +68,9 @@ a:active {
 }
 
 .wrap {
-  max-width: 980px;
+  max-width: var(--wrap-max, 980px);
   margin: 0 auto;
-  padding: 24px;
+  padding: var(--wrap-y, 24px) var(--wrap-x, 24px);
 }
 
 .grid {
@@ -310,6 +314,10 @@ label {
   padding: 16px 0 24px;
 }
 
+.site-footer .wrap {
+  padding: 0 var(--wrap-x, 24px);
+}
+
 .site-footer p {
   margin: 4px 0;
 }
@@ -324,3 +332,18 @@ label {
     scroll-behavior: auto !important;
   }
 }
+.chart-container {
+  width: 100%;
+  max-width: var(--wrap-max, 980px);
+  margin: 0 auto;
+  overflow-x: clip;
+}
+
+.chart-container canvas {
+  display: block;
+  max-width: 100%;
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  height: auto;
+}
+

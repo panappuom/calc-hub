@@ -242,7 +242,9 @@ export function getStaticPaths() {
           <p class="small">※実質価格はポイント考慮の試算です。</p>
           <p class="small">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
           <h2>価格推移 (30日)</h2>
-          <canvas id="chart" width="600" height="200" data-sku={sku}></canvas>
+          <div class="chart-container">
+            <canvas id="chart" data-sku={sku}></canvas>
+          </div>
           <p id="chart-msg" class="small"></p>
           <p class="small">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
           <script>
@@ -282,34 +284,67 @@ export function getStaticPaths() {
           </script>
           <script>
             const canvas = document.getElementById('chart');
-            const sku = canvas.dataset.sku;
             const msg = document.getElementById('chart-msg');
-            const base = document.baseURI;
-            fetch(`${base}data/price-history/${sku}.json?t=${Date.now()}`).then(r => r.json()).then(hist => {
-              const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
-              const data = list.filter(d => Number.isFinite(d.price)).slice(-30);
-              if (data.length < 2) {
-                canvas.style.display = 'none';
-                msg.textContent = 'データ少';
-                return;
+
+            if (canvas && msg) {
+              const sku = canvas.dataset.sku;
+              const base = document.baseURI;
+              let chartData = null;
+
+              function renderChart() {
+                if (!chartData || chartData.length < 2) return;
+                const rect = canvas.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+                if (width === 0 || height === 0) return;
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = Math.round(width * dpr);
+                canvas.height = Math.round(height * dpr);
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const prices = chartData.map(d => d.price);
+                const min = Math.min(...prices);
+                const max = Math.max(...prices);
+                const range = max - min || 1;
+                ctx.beginPath();
+                chartData.forEach((p, i) => {
+                  const x = i * (canvas.width / (chartData.length - 1));
+                  const y = canvas.height - (p.price - min) / range * canvas.height;
+                  if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                });
+                ctx.strokeStyle = '#0070f3';
+                ctx.lineWidth = Math.max(1, dpr);
+                ctx.stroke();
               }
-              const ctx = canvas.getContext('2d');
-              const prices = data.map(d => d.price);
-              const min = Math.min(...prices);
-              const max = Math.max(...prices);
-              const range = max - min || 1;
-              ctx.beginPath();
-              data.forEach((p, i) => {
-                const x = i * (canvas.width / (data.length - 1));
-                const y = canvas.height - (p.price - min) / range * canvas.height;
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-              });
-              ctx.strokeStyle = '#0070f3';
-              ctx.stroke();
-            }).catch(() => {
-              canvas.style.display = 'none';
-              msg.textContent = 'データ少';
-            });
+
+              function handleResize() {
+                if (!chartData || chartData.length < 2) return;
+                renderChart();
+              }
+
+              window.addEventListener('resize', handleResize);
+
+              fetch(`${base}data/price-history/${sku}.json?t=${Date.now()}`)
+                .then(r => r.json())
+                .then(hist => {
+                  const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
+                  const filtered = list.filter(d => Number.isFinite(d.price)).slice(-30);
+                  if (filtered.length < 2) {
+                    canvas.style.display = 'none';
+                    msg.textContent = 'データ少';
+                    return;
+                  }
+                  chartData = filtered;
+                  canvas.style.display = '';
+                  msg.textContent = '';
+                  renderChart();
+                })
+                .catch(() => {
+                  canvas.style.display = 'none';
+                  msg.textContent = 'データ少';
+                });
+            }
           </script>
         </>
       ) : (

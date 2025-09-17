@@ -17,38 +17,38 @@ import Footer from "../components/Footer.astro";
 
         <div class="card">
           <h2>税込↔税抜</h2>
-          <label>価格</label><input id="p1" type="number" placeholder="1000" />
-          <label>税率(%)</label><input id="t1" type="number" value="10" />
+          <label for="p1">価格</label><input id="p1" type="number" placeholder="1000" />
+          <label for="t1">税率(%)</label><input id="t1" type="number" value="10" />
           <div class="result" id="r1"></div>
         </div>
 
         <div class="card">
           <h2>体積 m³ ↔ L</h2>
-          <label>値</label><input id="p2" type="number" placeholder="1" />
-          <label>単位</label>
+          <label for="p2">値</label><input id="p2" type="number" placeholder="1" />
+          <label for="u2">単位</label>
           <select id="u2"><option value="m3">m³</option><option value="l">L</option></select>
           <div class="result" id="r2"></div>
         </div>
 
         <div class="card">
           <h2>画像 DPI↔px</h2>
-          <label>幅(px)</label><input id="px3" type="number" placeholder="1200" />
-          <label>DPI</label><input id="dpi3" type="number" placeholder="300" />
-          <label>用紙幅(mm)</label><input id="mm3" type="number" placeholder="210" />
+          <label for="px3">幅(px)</label><input id="px3" type="number" placeholder="1200" />
+          <label for="dpi3">DPI</label><input id="dpi3" type="number" placeholder="300" />
+          <label for="mm3">用紙幅(mm)</label><input id="mm3" type="number" placeholder="210" />
           <div class="result" id="r3"></div>
         </div>
 
         <div class="card">
           <h2>歩数→距離</h2>
-          <label>歩数</label><input id="steps4" type="number" placeholder="7000" />
-          <label>歩幅(cm)</label><input id="stride4" type="number" placeholder="65" />
+          <label for="steps4">歩数</label><input id="steps4" type="number" placeholder="7000" />
+          <label for="stride4">歩幅(cm)</label><input id="stride4" type="number" placeholder="65" />
           <div class="result" id="r4"></div>
         </div>
 
         <div class="card">
           <h2>熱量 kcal ↔ kJ</h2>
-          <label>値</label><input id="val5" type="number" placeholder="500" />
-          <label>単位</label>
+          <label for="val5">値</label><input id="val5" type="number" placeholder="500" />
+          <label for="u5">単位</label>
           <select id="u5"><option value="kcal">kcal</option><option value="kj">kJ</option></select>
           <div class="result" id="r5"></div>
         </div>
