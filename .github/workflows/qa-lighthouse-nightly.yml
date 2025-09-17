@@ -48,10 +48,23 @@ jobs:
         env:
           NPM_CONFIG_CACHE: ~/.npm
 
-      - name: Build site and install Chromium
-        run: npm run pretest:a11y
+      - name: Build site and prepare Lighthouse bundle
+        run: |
+          npm run build
+          node scripts/prepare-lhci-dist.mjs
         env:
           NPM_CONFIG_CACHE: ~/.npm
+
+      - name: Install Chromium via Playwright (disabled on CI)
+        if: ${{ runner.os == 'Linux' && false }}
+        run: node scripts/setup-playwright.mjs
+
+      - name: Setup Chromium
+        id: setup-chromium
+        uses: browser-actions/setup-chromium@v1
+
+      - name: Set CHROME_PATH
+        run: echo "CHROME_PATH=${{ steps.setup-chromium.outputs.chromium-path }}" >> $GITHUB_ENV
 
       - name: Run Lighthouse accessibility checks
         run: npm run test:a11y

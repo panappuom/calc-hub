@@ -30,15 +30,25 @@ function runNpx(args, options = {}) {
   return result;
 }
 
-const { chromium } = await import('playwright');
-const chromePath = chromium.executablePath();
+let chromePath = process.env.CHROME_PATH;
+let chromeSource = 'CHROME_PATH environment variable';
 
 if (!chromePath) {
-  console.error('Could not determine the Chromium executable path from Playwright.');
+  try {
+    const { chromium } = await import('playwright');
+    chromePath = chromium.executablePath();
+    chromeSource = 'Playwright';
+  } catch (error) {
+    console.error('Failed to resolve Chromium via Playwright:', error);
+  }
+}
+
+if (!chromePath) {
+  console.error('Could not determine the Chromium executable path.');
   process.exit(1);
 }
 
-console.log(`Using Chromium executable: ${chromePath}`);
+console.log(`Using Chromium executable (${chromeSource}): ${chromePath}`);
 
 const configPath = process.env.LHCI_CONFIG || '.lighthouserc.json';
 const allowAssertFailure = process.env.ALLOW_ASSERT_FAILURE === '1';
