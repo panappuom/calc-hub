@@ -1,0 +1,64 @@
+name: QA Lighthouse (Nightly)
+
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: qa-lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Detect Playwright version
+        id: playwright-version
+        run: |
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          console.log(`version=${pkg.devDependencies.playwright}`);
+          NODE
+        shell: bash
+
+      - name: Cache npm directory
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NPM_CONFIG_CACHE: ~/.npm
+
+      - name: Build site and install Chromium
+        run: npm run pretest:a11y
+        env:
+          NPM_CONFIG_CACHE: ~/.npm
+
+      - name: Run Lighthouse accessibility checks
+        run: npm run test:a11y
+
+      - name: Upload Lighthouse artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report-nightly
+          path: .lighthouseci

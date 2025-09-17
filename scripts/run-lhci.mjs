@@ -11,9 +11,11 @@ const projectRoot = join(currentDir, '..');
 rmSync(join(projectRoot, '.lighthouseci'), { recursive: true, force: true });
 
 function runNpx(args, options = {}) {
+  const { allowFailure = false, ...spawnOptions } = options;
+
   const result = spawnSync(npxCommand, args, {
     stdio: 'inherit',
-    ...options,
+    ...spawnOptions,
   });
 
   if (result.error) {
@@ -21,7 +23,7 @@ function runNpx(args, options = {}) {
     process.exit(1);
   }
 
-  if (typeof result.status === 'number' && result.status !== 0) {
+  if (!allowFailure && typeof result.status === 'number' && result.status !== 0) {
     process.exit(result.status);
   }
 
@@ -38,15 +40,23 @@ if (!chromePath) {
 
 console.log(`Using Chromium executable: ${chromePath}`);
 
+const configPath = process.env.LHCI_CONFIG || '.lighthouserc.json';
+const allowAssertFailure = process.env.ALLOW_ASSERT_FAILURE === '1';
+
 const env = {
   ...process.env,
   CHROME_PATH: chromePath,
 };
 
-runNpx(['lhci', 'collect', '--config=.lighthouserc.json'], {
+runNpx(['lhci', 'collect', `--config=${configPath}`], {
   env,
 });
 
-runNpx(['lhci', 'assert', '--config=.lighthouserc.json'], {
+const assertResult = runNpx(['lhci', 'assert', `--config=${configPath}`], {
   env,
+  allowFailure: allowAssertFailure,
 });
+
+if (allowAssertFailure && typeof assertResult.status === 'number' && assertResult.status !== 0) {
+  console.warn('LHCI assertions failed but continuing due to ALLOW_ASSERT_FAILURE=1');
+}
