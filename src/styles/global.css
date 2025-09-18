@@ -19,6 +19,7 @@
   --control-border: #2f3a4d;
   --tab-bg: #1f2735;
   --tab-border: #334155;
+  --card-bg: #141823;
   --chip-rakuten-bg: #8b1a1a;
   --chip-rakuten-fg: #ffffff;
   --chip-yahoo-bg: #134e4a;
@@ -269,10 +270,14 @@ label {
   font-size: 0.85em;
 }
 
-.price-table {
+.price-table { 
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 16px;
+}
+
+.price-section {
+  overflow-x: clip;
 }
 
 .price-table thead th {
@@ -282,11 +287,33 @@ label {
   text-align: left;
 }
 
+.price-table thead th[data-column="price"],
+.price-table thead th[data-column="points"],
+.price-table thead th[data-column="effective"] {
+  text-align: right;
+}
+
 .price-table th,
 .price-table td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-subtle);
   vertical-align: top;
+}
+
+.price-table td[data-cell="price"],
+.price-table td[data-cell="points"],
+.price-table td[data-cell="effective"] {
+  text-align: right;
+}
+
+.price-table td[data-cell="price"],
+.price-table td[data-cell="points"],
+.price-table td[data-cell="effective"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.price-table td[data-cell="effective"] {
+  font-weight: 700;
 }
 
 .price-table .shop-name {
@@ -302,6 +329,97 @@ label {
 
 .price-table tbody tr:nth-child(even) {
   background: var(--table-row-alt-bg);
+}
+
+@media (max-width: 768px) {
+  .sr-only {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .price-table {
+    display: block;
+    width: 100%;
+  }
+
+  .price-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .price-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .price-table tbody tr:nth-child(even) {
+    background: var(--card-bg);
+  }
+
+  .price-table th,
+  .price-table td {
+    padding: 0;
+    border: 0;
+  }
+
+  .price-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .price-table td::before {
+    content: attr(data-label);
+    color: var(--fg-muted);
+    font-weight: 600;
+    opacity: 0.7;
+    margin-right: 8px;
+  }
+
+  .price-table td[data-cell="shop"] {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .price-table td[data-cell="shop"]::before {
+    margin: 0 0 4px;
+  }
+
+  .price-table td[data-cell="shop"] .shop-name {
+    margin-bottom: 0;
+  }
+
+  .price-table td[data-cell="shop"] a {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: var(--link);
+    color: var(--fg-inverted);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .price-table td[data-cell="shop"] a:hover,
+  .price-table td[data-cell="shop"] a:focus-visible {
+    background: var(--link-hover);
+    color: var(--fg-inverted);
+  }
 }
 
 .price-section[data-source-status="partial"] h2,
