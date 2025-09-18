@@ -289,6 +289,17 @@ label {
   vertical-align: top;
 }
 
+.price-table .shop-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
 .price-table tbody tr:nth-child(even) {
   background: var(--table-row-alt-bg);
 }
