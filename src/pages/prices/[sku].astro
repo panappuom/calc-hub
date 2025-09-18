@@ -68,16 +68,22 @@ if (!bestRecommended && list.length && skuInfo?.brandHints?.length) {
     bestRecommended = cand.reduce((min, it) => (it.price < min.price ? it : min), cand[0]);
   }
 }
+function formatCurrency(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '';
+  return `${Math.round(num).toLocaleString('ja-JP')}円`;
+}
+
 function formatPrice(it) {
   if (!it) return '';
-  return `${it.price}円`;
+  return formatCurrency(it.price);
 }
 
 function formatSummary(it) {
   if (!it) return '';
   if (it.pointRate) {
-    const eff = Math.round(it.price * (100 - it.pointRate) / 100);
-    return `${formatPrice(it)}（ポイント${it.pointRate}%で実質${eff}円）`;
+    const eff = Math.floor(it.price * (100 - it.pointRate) / 100);
+    return `${formatPrice(it)}（ポイント${it.pointRate}%で実質${formatCurrency(eff)}）`;
   }
   return formatPrice(it);
 }
@@ -146,13 +152,13 @@ export function getStaticPaths() {
               <>
                 {hasAllPoints && <button class="sort-toggle">実質価格順に切替</button>}
                 <table class="price-table">
-                  <thead>
+                  <thead class="sr-only">
                     <tr>
-                      <th>ストア</th>
-                      <th>ショップ</th>
-                      <th>価格</th>
-                      <th>ポイント</th>
-                      <th>実質価格<br/><span class="small">（ポイント込み）</span></th>
+                      <th id="col-all-store" scope="col">ストア</th>
+                      <th id="col-all-shop" scope="col">ショップ</th>
+                      <th id="col-all-price" scope="col" data-column="price">価格</th>
+                      <th id="col-all-point" scope="col" data-column="points">ポイント</th>
+                      <th id="col-all-eff" scope="col" data-column="effective">実質価格<br/><span class="small">（ポイント込み）</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -160,8 +166,8 @@ export function getStaticPaths() {
                       const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
                       return (
                         <tr data-price={it.price} data-eff={eff}>
-                          <td>{it.store}</td>
-                          <td>
+                          <td headers="col-all-store" data-label="ストア" data-cell="store">{it.store}</td>
+                          <td headers="col-all-shop" data-label="ショップ" data-cell="shop">
                             <span class="shop-name" title={it.shopName}>
                               {it.shopName}
                             </span>
@@ -176,9 +182,9 @@ export function getStaticPaths() {
                               <span aria-hidden="true" class="external-link-icon">↗</span>
                             </a>
                           </td>
-                          <td>{formatPrice(it)}</td>
-                          <td>{it.pointRate ? `${it.pointRate}%` : '-'}</td>
-                          <td>{eff}円</td>
+                          <td headers="col-all-price" data-label="価格" data-cell="price">{formatPrice(it)}</td>
+                          <td headers="col-all-point" data-label="ポイント" data-cell="points">{it.pointRate ? `${it.pointRate}%` : '-'}</td>
+                          <td headers="col-all-eff" data-label="実質価格" data-cell="effective">{formatCurrency(eff)}</td>
                         </tr>
                       );
                     })}
@@ -201,12 +207,12 @@ export function getStaticPaths() {
                 <>
                   {sec.hasPoints && <button class="sort-toggle">実質価格順に切替</button>}
                   <table class="price-table">
-                    <thead>
+                    <thead class="sr-only">
                       <tr>
-                        <th>ショップ</th>
-                        <th>価格</th>
-                        <th>ポイント</th>
-                        <th>実質価格<br/><span class="small">（ポイント込み）</span></th>
+                        <th id={`col-${sec.key}-shop`} scope="col">ショップ</th>
+                        <th id={`col-${sec.key}-price`} scope="col" data-column="price">価格</th>
+                        <th id={`col-${sec.key}-point`} scope="col" data-column="points">ポイント</th>
+                        <th id={`col-${sec.key}-eff`} scope="col" data-column="effective">実質価格<br/><span class="small">（ポイント込み）</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -214,7 +220,7 @@ export function getStaticPaths() {
                         const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
                         return (
                           <tr data-price={it.price} data-eff={eff}>
-                            <td>
+                            <td headers={`col-${sec.key}-shop`} data-label="ショップ" data-cell="shop">
                               <span class="shop-name" title={it.shopName}>
                                 {it.shopName}
                               </span>
@@ -229,9 +235,9 @@ export function getStaticPaths() {
                                 <span aria-hidden="true" class="external-link-icon">↗</span>
                               </a>
                             </td>
-                            <td>{formatPrice(it)}</td>
-                            <td>{it.pointRate ? `${it.pointRate}%` : '-'}</td>
-                            <td>{eff}円</td>
+                            <td headers={`col-${sec.key}-price`} data-label="価格" data-cell="price">{formatPrice(it)}</td>
+                            <td headers={`col-${sec.key}-point`} data-label="ポイント" data-cell="points">{it.pointRate ? `${it.pointRate}%` : '-'}</td>
+                            <td headers={`col-${sec.key}-eff`} data-label="実質価格" data-cell="effective">{formatCurrency(eff)}</td>
                           </tr>
                         );
                       })}
