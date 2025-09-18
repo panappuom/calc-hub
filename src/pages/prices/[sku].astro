@@ -162,7 +162,9 @@ export function getStaticPaths() {
                         <tr data-price={it.price} data-eff={eff}>
                           <td>{it.store}</td>
                           <td>
-                            {it.shopName}
+                            <span class="shop-name" title={it.shopName}>
+                              {it.shopName}
+                            </span>
                             <a
                               href={it.itemUrl}
                               target="_blank"
@@ -213,7 +215,9 @@ export function getStaticPaths() {
                         return (
                           <tr data-price={it.price} data-eff={eff}>
                             <td>
-                              {it.shopName}
+                              <span class="shop-name" title={it.shopName}>
+                                {it.shopName}
+                              </span>
                               <a
                                 href={it.itemUrl}
                                 target="_blank"
