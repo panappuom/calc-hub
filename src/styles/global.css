@@ -32,6 +32,7 @@
   --table-row-alt-bg: rgba(148, 163, 184, 0.08);
   --notice-warn-bg: #78350f;
   --notice-warn-fg: #fef3c7;
+  --effective-highlight: rgba(59, 130, 246, 0.22);
 }
 
 * {
@@ -350,6 +351,10 @@ label {
   text-align: right;
 }
 
+.price-table thead th[data-column="effective"] {
+  background: var(--effective-highlight);
+}
+
 .price-table th,
 .price-table td {
   padding: 10px 12px;
@@ -371,6 +376,12 @@ label {
 
 .price-table td[data-cell="effective"] {
   font-weight: 700;
+  background: var(--effective-highlight);
+  color: var(--fg-strong);
+}
+
+.price-table td[data-cell="price"].is-muted {
+  color: var(--fg-muted);
 }
 
 .price-table td[data-cell="action"] {
@@ -399,6 +410,10 @@ label {
 
 .price-table tbody tr:nth-child(even) {
   background: var(--table-row-alt-bg);
+}
+
+.price-table tbody tr:nth-child(even) td[data-cell="effective"] {
+  background: var(--effective-highlight);
 }
 
 @media (max-width: 768px) {
@@ -457,12 +472,28 @@ label {
     gap: 8px;
   }
 
+  .price-table td[data-cell="effective"] {
+    background: var(--effective-highlight);
+    color: var(--fg-strong);
+    border-radius: 8px;
+    padding: 8px;
+  }
+
+  .price-table td[data-cell="price"].is-muted {
+    color: var(--fg-muted);
+  }
+
   .price-table td::before {
     content: attr(data-label);
     color: var(--fg-muted);
     font-weight: 600;
     opacity: 0.7;
     margin-right: 8px;
+  }
+
+  .price-table td[data-cell="effective"]::before {
+    color: var(--fg-strong);
+    opacity: 0.9;
   }
 
   .price-table td[data-cell="shop"] {
