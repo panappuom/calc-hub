@@ -497,16 +497,21 @@ label {
   }
 
   .price-table td[data-cell="shop"] {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
   }
 
   .price-table td[data-cell="shop"]::before {
-    margin: 0 0 4px;
+    margin: 0;
+    align-self: start;
   }
 
   .price-table td[data-cell="shop"] .shop-name {
     margin-bottom: 0;
+    text-align: right;
+    justify-self: end;
   }
 
   .price-table td[data-cell="store"] {
