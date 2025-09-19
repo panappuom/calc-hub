@@ -510,16 +510,22 @@ label {
   }
 
   .price-table td[data-cell="store"] {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    display: block;
+    position: static;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
     padding: 0;
+    margin-bottom: 4px;
   }
 
   .price-table td[data-cell="store"]::before {
     content: "";
     display: none;
+  }
+
+  .price-table td[data-cell="store"] .store-badge {
+    max-width: 100%;
+    white-space: normal;
   }
 
   .price-table td[data-cell="action"] {
