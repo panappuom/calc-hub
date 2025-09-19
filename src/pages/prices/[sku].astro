@@ -39,25 +39,46 @@ try {
 const { sku } = Astro.params;
 const skuInfo = skus.find(s => s.id === sku);
 const priceInfo = data?.items?.find(i => i.skuId === sku);
-const list = priceInfo?.list ? [...priceInfo.list].sort((a, b) => a.price - b.price) : [];
-const rakutenList = rakutenData?.items?.find(i => i.skuId === sku)?.list?.sort((a, b) => a.price - b.price) ?? [];
-const yahooList = yahooData?.items?.find(i => i.skuId === sku)?.list?.sort((a, b) => a.price - b.price) ?? [];
+function getEffectivePriceValue(it) {
+  const price = Number(it?.price);
+  if (!Number.isFinite(price)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  const pointRate = Number(it?.pointRate ?? 0);
+  if (!Number.isFinite(pointRate) || pointRate <= 0) {
+    return Math.floor(price);
+  }
+  return Math.floor(price * (100 - pointRate) / 100);
+}
+
+function withEffectivePrice(it) {
+  return {
+    ...it,
+    effective: getEffectivePriceValue(it)
+  };
+}
+
+const list = priceInfo?.list ? priceInfo.list.map(withEffectivePrice).sort((a, b) => a.effective - b.effective) : [];
+const rakutenSource = rakutenData?.items?.find(i => i.skuId === sku)?.list ?? [];
+const yahooSource = yahooData?.items?.find(i => i.skuId === sku)?.list ?? [];
+const rakutenList = rakutenSource.map(withEffectivePrice).sort((a, b) => a.effective - b.effective);
+const yahooList = yahooSource.map(withEffectivePrice).sort((a, b) => a.effective - b.effective);
 const allList = [
   ...rakutenList.map(it => ({ ...it, store: '楽天' })),
   ...yahooList.map(it => ({ ...it, store: 'Yahoo' }))
-].sort((a, b) => a.price - b.price);
-const hasAllPoints = allList.some(it => it.pointRate);
+].sort((a, b) => a.effective - b.effective);
+const hasAllPoints = allList.some(it => Number(it.pointRate) > 0);
 const sections = [
-  { name: 'Rakuten', key: 'rakuten', list: rakutenList, status: data?.sourceStatus?.rakuten ?? 'fail', hasPoints: rakutenList.some(it => it.pointRate) },
-  { name: 'Yahoo', key: 'yahoo', list: yahooList, status: data?.sourceStatus?.yahoo ?? 'fail', hasPoints: yahooList.some(it => it.pointRate) }
+  { name: 'Rakuten', key: 'rakuten', list: rakutenList, status: data?.sourceStatus?.rakuten ?? 'fail', hasPoints: rakutenList.some(it => Number(it.pointRate) > 0) },
+  { name: 'Yahoo', key: 'yahoo', list: yahooList, status: data?.sourceStatus?.yahoo ?? 'fail', hasPoints: yahooList.some(it => Number(it.pointRate) > 0) }
 ];
 const statusMessages = {
   partial: 'このソースの一部データが取得できませんでした。表示は最新の取得分です。',
   fail: 'このソースの取得に失敗しました。別ソースまたは前回データで表示しています。'
 };
-const bestToday = list.length
-  ? list.reduce((min, it) => (it.price < min.price ? it : min), list[0])
-  : null;
+const bestToday = allList.length
+  ? allList[0]
+  : (list.length ? list.reduce((min, it) => (it.effective < min.effective ? it : min), list[0]) : null);
 let bestRecommended = priceInfo?.bestRecommended ?? null;
 if (!bestRecommended && list.length && skuInfo?.brandHints?.length) {
   const cand = list.filter(it => {
@@ -65,8 +86,11 @@ if (!bestRecommended && list.length && skuInfo?.brandHints?.length) {
     return skuInfo.brandHints.some(b => title.includes(b.toLowerCase()));
   });
   if (cand.length) {
-    bestRecommended = cand.reduce((min, it) => (it.price < min.price ? it : min), cand[0]);
+    bestRecommended = cand.reduce((min, it) => (it.effective < min.effective ? it : min), cand[0]);
   }
+}
+if (bestRecommended) {
+  bestRecommended = { ...bestRecommended, effective: Number.isFinite(bestRecommended.effective) ? bestRecommended.effective : getEffectivePriceValue(bestRecommended) };
 }
 function formatCurrency(value) {
   const num = Number(value);
@@ -81,9 +105,10 @@ function formatPrice(it) {
 
 function formatSummary(it) {
   if (!it) return '';
-  if (it.pointRate) {
-    const eff = Math.floor(it.price * (100 - it.pointRate) / 100);
-    return `${formatPrice(it)}（ポイント${it.pointRate}%で実質${formatCurrency(eff)}）`;
+  const pointRate = Number(it.pointRate ?? 0);
+  const effective = Number.isFinite(it.effective) ? it.effective : getEffectivePriceValue(it);
+  if (pointRate > 0) {
+    return `${formatPrice(it)}（ポイント${pointRate}%で実質${formatCurrency(effective)}）`;
   }
   return formatPrice(it);
 }
@@ -160,7 +185,7 @@ export function getStaticPaths() {
             <h2>全ストア</h2>
             {allList.length ? (
               <>
-                {hasAllPoints && <button class="sort-toggle">実質価格順に切替</button>}
+                {hasAllPoints && <button class="sort-toggle">価格順に切替</button>}
                 <table class="price-table">
                   <thead class="sr-only">
                     <tr>
@@ -174,7 +199,8 @@ export function getStaticPaths() {
                   </thead>
                   <tbody>
                     {allList.map(it => {
-                      const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
+                      const eff = Number.isFinite(it.effective) ? it.effective : getEffectivePriceValue(it);
+                      const hasPointRate = Number(it.pointRate ?? 0) > 0;
                       return (
                         <tr class="has-store-badge" data-price={it.price} data-eff={eff}>
                           <td
@@ -189,8 +215,15 @@ export function getStaticPaths() {
                               {it.shopName}
                             </span>
                           </td>
-                          <td headers="col-all-price" data-label="価格" data-cell="price">{formatPrice(it)}</td>
-                          <td headers="col-all-point" data-label="ポイント" data-cell="points">{it.pointRate ? `${it.pointRate}%` : '-'}</td>
+                          <td
+                            headers="col-all-price"
+                            data-label="価格"
+                            data-cell="price"
+                            class={!hasPointRate ? 'is-muted' : undefined}
+                          >
+                            {formatPrice(it)}
+                          </td>
+                          <td headers="col-all-point" data-label="ポイント" data-cell="points">{hasPointRate ? `${it.pointRate}%` : '-'}</td>
                           <td headers="col-all-eff" data-label="実質価格" data-cell="effective">{formatCurrency(eff)}</td>
                           <td
                             headers="col-all-action"
@@ -228,8 +261,8 @@ export function getStaticPaths() {
                 )}
               </h2>
               {sec.list.length ? (
-                <>
-                  {sec.hasPoints && <button class="sort-toggle">実質価格順に切替</button>}
+              <>
+                  {sec.hasPoints && <button class="sort-toggle">価格順に切替</button>}
                   <table class="price-table">
                     <thead class="sr-only">
                       <tr>
@@ -242,7 +275,8 @@ export function getStaticPaths() {
                     </thead>
                     <tbody>
                       {sec.list.map(it => {
-                        const eff = Math.floor(it.price * (100 - (it.pointRate ?? 0)) / 100);
+                        const eff = Number.isFinite(it.effective) ? it.effective : getEffectivePriceValue(it);
+                        const hasPointRate = Number(it.pointRate ?? 0) > 0;
                         return (
                           <tr data-price={it.price} data-eff={eff}>
                             <td headers={`col-${sec.key}-shop`} data-label="ショップ" data-cell="shop">
@@ -250,8 +284,15 @@ export function getStaticPaths() {
                                 {it.shopName}
                               </span>
                             </td>
-                            <td headers={`col-${sec.key}-price`} data-label="価格" data-cell="price">{formatPrice(it)}</td>
-                            <td headers={`col-${sec.key}-point`} data-label="ポイント" data-cell="points">{it.pointRate ? `${it.pointRate}%` : '-'}</td>
+                            <td
+                              headers={`col-${sec.key}-price`}
+                              data-label="価格"
+                              data-cell="price"
+                              class={!hasPointRate ? 'is-muted' : undefined}
+                            >
+                              {formatPrice(it)}
+                            </td>
+                            <td headers={`col-${sec.key}-point`} data-label="ポイント" data-cell="points">{hasPointRate ? `${it.pointRate}%` : '-'}</td>
                             <td headers={`col-${sec.key}-eff`} data-label="実質価格" data-cell="effective">{formatCurrency(eff)}</td>
                             <td
                               headers={`col-${sec.key}-action`}
@@ -308,7 +349,7 @@ export function getStaticPaths() {
               const tbody = sec.querySelector('tbody');
               if (!toggle || !tbody) return;
               const rows = Array.from(tbody.querySelectorAll('tr'));
-              let byEff = false;
+              let byEff = true;
               function sortRows() {
                 rows
                   .sort((a, b) => {
@@ -317,10 +358,15 @@ export function getStaticPaths() {
                   })
                   .forEach(r => tbody.appendChild(r));
               }
+              function updateLabel() {
+                toggle.textContent = byEff ? '価格順に切替' : '実質価格順に切替';
+              }
+              updateLabel();
+              sortRows();
               toggle.addEventListener('click', () => {
                 byEff = !byEff;
                 sortRows();
-                toggle.textContent = byEff ? '価格順に切替' : '実質価格順に切替';
+                updateLabel();
               });
             });
           </script>
