@@ -50,26 +50,7 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
       {data ? (
         <>
           <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
-          {data.sourceStatus && (
-            <p class="small">
-              Rakuten:
-              <span
-                class={`badge status-${data.sourceStatus.rakuten ?? 'unknown'}`}
-                data-source="rakuten"
-                data-status={data.sourceStatus.rakuten ?? 'unknown'}
-              >
-                {data.sourceStatus.rakuten}
-              </span>
-              &nbsp;Yahoo:
-              <span
-                class={`badge status-${data.sourceStatus.yahoo ?? 'unknown'}`}
-                data-source="yahoo"
-                data-status={data.sourceStatus.yahoo ?? 'unknown'}
-              >
-                {data.sourceStatus.yahoo}
-              </span>
-            </p>
-          )}
+          {data.sourceStatus && <p class="small">対象ストア: 楽天市場、Yahoo!ショッピング</p>}
           <ul>
             {data.items.map(it => (
               <li>
