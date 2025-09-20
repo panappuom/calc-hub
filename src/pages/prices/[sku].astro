@@ -114,7 +114,7 @@ function getShopLinkDescription(name) {
   return `${name}で商品の詳細を確認できます（新しいタブで開きます）`;
 }
 
-function truncateShopName(name, maxLength = 15) {
+function truncateShopName(name, maxLength = 20) {
   if (!name) return '';
   if (name.length <= maxLength) {
     return name;
@@ -205,18 +205,11 @@ export function getStaticPaths() {
             <h2>最安情報</h2>
             <div class="best-price-cards">
               <section class="best-price-card" role="region" aria-labelledby="best-today-heading">
-                <p class="best-price-card__label" id="best-today-heading">今日の最安</p>
+                <p class="best-price-card__label" id="best-today-heading">推奨最安（ブランド一致）</p>
                 {bestTodayCard ? (
                   <>
                     <p class="best-price-card__line best-price-card__line--primary">
-                      {bestTodayCard.hasEffectiveLine ? (
-                        <>
-                          <span class="best-price-card__prefix">{bestTodayCard.prefix}</span>
-                          <span class="best-price-card__value" aria-label={bestTodayCard.primaryAriaLabel}>{bestTodayCard.primaryValue}</span>
-                        </>
-                      ) : (
-                        <span class="best-price-card__value" aria-label={bestTodayCard.primaryAriaLabel}>{bestTodayCard.primaryValue}</span>
-                      )}
+                      <span class="best-price-card__value" aria-label={bestTodayCard.primaryAriaLabel}>{bestTodayCard.primaryValue}</span>
                     </p>
                     {bestTodayCard.hasEffectiveLine && (
                       <p class="best-price-card__line best-price-card__line--secondary">
@@ -250,18 +243,11 @@ export function getStaticPaths() {
               </section>
               {skuInfo?.brandHints?.length ? (
                 <section class="best-price-card" role="region" aria-labelledby="best-recommended-heading">
-                  <p class="best-price-card__label" id="best-recommended-heading">推奨安</p>
+                  <p class="best-price-card__label" id="best-recommended-heading">推奨最安（ブランド一致）</p>
                   {bestRecommendedCard ? (
                     <>
                       <p class="best-price-card__line best-price-card__line--primary">
-                        {bestRecommendedCard.hasEffectiveLine ? (
-                          <>
-                            <span class="best-price-card__prefix">{bestRecommendedCard.prefix}</span>
-                            <span class="best-price-card__value" aria-label={bestRecommendedCard.primaryAriaLabel}>{bestRecommendedCard.primaryValue}</span>
-                          </>
-                        ) : (
-                          <span class="best-price-card__value" aria-label={bestRecommendedCard.primaryAriaLabel}>{bestRecommendedCard.primaryValue}</span>
-                        )}
+                        <span class="best-price-card__value" aria-label={bestRecommendedCard.primaryAriaLabel}>{bestRecommendedCard.primaryValue}</span>
                       </p>
                       {bestRecommendedCard.hasEffectiveLine && (
                         <p class="best-price-card__line best-price-card__line--secondary">
