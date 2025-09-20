@@ -2,12 +2,13 @@
 import "../../styles/global.css";
 import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
+const BASE_URL = import.meta.env.BASE_URL;
 
 let data;
 let sourceStatus = "fail";
 try {
   const url = new URL(
-    import.meta.env.BASE_URL + "data/prices/today.json",
+    BASE_URL + "data/prices/today.json",
     Astro.site
   );
   const res = await fetch(url);
@@ -31,7 +32,7 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <base href={import.meta.env.BASE_URL} />
+    <base href={BASE_URL} />
     <title>今日の最安“候補”</title>
   </head>
   <body>
