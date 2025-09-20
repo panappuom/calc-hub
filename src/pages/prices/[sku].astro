@@ -5,6 +5,7 @@ import skus from "../../data/skus.json";
 import { safeBreak } from "../../lib/safe-break";
 const IS_DEV = import.meta.env.DEV;
 const BASE_URL = import.meta.env.BASE_URL;
+const clientGlobalsScript = `window.__APP_DEV__ = ${JSON.stringify(IS_DEV)};\nwindow.__BASE_URL__ = ${JSON.stringify(BASE_URL)};`;
 
 let data;
 let rakutenData;
@@ -175,10 +176,7 @@ export function getStaticPaths() {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <base href={BASE_URL} />
-    <script is:inline>
-      window.__APP_DEV__ = ${IS_DEV ? 'true' : 'false'};
-      window.__BASE_URL__ = ${JSON.stringify(BASE_URL)};
-    </script>
+    <script is:inline set:html={clientGlobalsScript}></script>
     <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
   </head>
   <body>
@@ -522,16 +520,18 @@ export function getStaticPaths() {
                 const dpr = window.devicePixelRatio || 1;
                 canvas.width = Math.round(width * dpr);
                 canvas.height = Math.round(height * dpr);
-                console.log('chart canvas dimensions', {
-                  clientWidth,
-                  clientHeight,
-                  offsetWidth,
-                  offsetHeight,
-                  cssWidth: width,
-                  cssHeight: height,
-                  canvasWidth: canvas.width,
-                  canvasHeight: canvas.height,
-                });
+                if (window.__APP_DEV__) {
+                  console.log('chart canvas dimensions', {
+                    clientWidth,
+                    clientHeight,
+                    offsetWidth,
+                    offsetHeight,
+                    cssWidth: width,
+                    cssHeight: height,
+                    canvasWidth: canvas.width,
+                    canvasHeight: canvas.height,
+                  });
+                }
                 if (
                   !clientWidth ||
                   !clientHeight ||
