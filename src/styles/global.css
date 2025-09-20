@@ -45,6 +45,10 @@ body {
   color: var(--fg-default);
   font: 16px/1.6 system-ui, Segoe UI, Meiryo, sans-serif;
   overflow-x: clip;
+  word-break: normal;
+  line-break: strict;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 :focus-visible {
@@ -117,6 +121,19 @@ h1,
 h2 {
   line-height: 1.2;
   color: var(--fg-strong);
+  text-wrap: balance;
+  line-break: strict;
+  word-break: normal;
+}
+
+.nobr {
+  white-space: nowrap;
+}
+
+@supports (word-break: auto-phrase) {
+  .jp-copy {
+    word-break: auto-phrase;
+  }
 }
 
 .small {

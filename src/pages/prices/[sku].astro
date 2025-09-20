@@ -2,6 +2,7 @@
 import "../../styles/global.css";
 import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
+import { safeBreak } from "../../lib/safe-break";
 const IS_DEV = import.meta.env.DEV;
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -183,16 +184,16 @@ export function getStaticPaths() {
   <body>
     <div class="wrap">
         <a href="./" class="small">← トップ</a>
-      <h1>{skuInfo ? skuInfo.q : sku} – 価格一覧</h1>
-      <p>ショップ別の価格を一覧しています。並び順は目安（価格）です。</p>
-      <p class="small">
+      <h1 set:html={safeBreak(`${skuInfo ? skuInfo.q : sku} – 価格一覧`)}></h1>
+      <p class="jp-copy">ショップ別の価格を一覧しています。並び順は <span class="nobr">目安（価格）です。</span></p>
+      <p class="small jp-copy">
         {data
           ? `取得日時: ${new Date(data.updatedAt).toLocaleString('ja-JP')}`
           : 'データ少'}
       </p>
       {skuInfo && (
         <div>
-          <h2>仕様</h2>
+          <h2 set:html={safeBreak("仕様")}></h2>
           <ul>
             {skuInfo.filters && <li>フィルタ: {skuInfo.filters.join(', ')}</li>}
             {skuInfo.brandHints && <li>ブランド候補: {skuInfo.brandHints.join(', ')}</li>}
@@ -202,7 +203,7 @@ export function getStaticPaths() {
       {priceInfo ? (
         <>
           <div class="best-price">
-            <h2>最安情報</h2>
+            <h2 set:html={safeBreak("最安情報")}></h2>
             <div class="best-price-cards">
               <section class="best-price-card" role="region" aria-labelledby="best-today-heading">
                 <p class="best-price-card__label" id="best-today-heading">今日の最安</p>
@@ -302,7 +303,7 @@ export function getStaticPaths() {
             <button type="button" data-tab="yahoo">Yahooのみ</button>
           </div>
           <div class="price-section tab-content" data-tab="all">
-            <h2 class="sr-only">全ストア</h2>
+            <h2 class="sr-only" set:html={safeBreak("全ストア")}></h2>
             {allList.length ? (
               <>
                 {hasAllPoints && <button class="sort-toggle">価格順に切替</button>}
@@ -374,7 +375,7 @@ export function getStaticPaths() {
           </div>
           {sections.map(sec => (
             <div class="price-section tab-content" data-tab={sec.key} data-source-status={sec.status} style="display:none">
-              <h2 class="sr-only">{sec.name}</h2>
+              <h2 class="sr-only" set:html={safeBreak(sec.name)}></h2>
               {sec.status !== 'ok' && (
                 <span class="status-icon--warn" aria-label={statusMessages[sec.status]} title={statusMessages[sec.status]}>⚠️</span>
               )}
@@ -440,15 +441,15 @@ export function getStaticPaths() {
               )}
             </div>
           ))}
-          <p class="small">※実質価格はポイント考慮の試算です。</p>
-          <p class="small">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
-          <h2>価格推移 (30日)</h2>
+          <p class="small jp-copy">※実質価格はポイント考慮の試算です。</p>
+          <p class="small jp-copy">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
+          <h2 set:html={safeBreak("価格推移 (30日)")}></h2>
           <div class="chart-container">
             <canvas id="chart" data-sku={sku}></canvas>
           </div>
           <p id="chart-msg" class="small"></p>
           <pre id="chart-debug" class="small" style="display:none" aria-live="polite"></pre>
-          <p class="small">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
+          <p class="small jp-copy">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
           <script>
             const tabButtons = document.querySelectorAll('.tabs button');
             const tabSections = document.querySelectorAll('.tab-content');
