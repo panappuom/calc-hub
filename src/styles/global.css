@@ -167,6 +167,95 @@ label {
   font-weight: 600;
 }
 
+.best-price {
+  margin-bottom: 24px;
+}
+
+.best-price-cards {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.best-price-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.best-price-card:focus-within {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.best-price-card__label {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--fg-muted);
+}
+
+.best-price-card__line {
+  margin: 0;
+}
+
+.best-price-card__line--primary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--fg-strong);
+}
+
+.best-price-card__prefix {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.best-price-card__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.best-price-card__line--secondary {
+  font-size: 0.9375rem;
+  color: var(--fg-muted);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.best-price-card__line--link {
+  margin-top: auto;
+  font-weight: 700;
+}
+
+.best-price-card__line--empty {
+  font-size: 0.9375rem;
+  color: var(--fg-muted);
+}
+
+.best-price-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.best-price-card__link span[aria-hidden="true"] {
+  font-size: 0.875em;
+}
+
 .status-icon--warn {
   margin-left: 4px;
   font-size: 0.9em;
