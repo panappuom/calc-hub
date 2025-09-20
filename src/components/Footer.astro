@@ -1,12 +1,13 @@
 ---
 import { getLastUpdated } from "../lib/last-updated.mjs";
+import { formatCopy } from "../lib/safe-break";
 
 const { formatted } = await getLastUpdated();
 ---
 <footer class="site-footer">
   <div class="wrap small">
-    <p>最終更新 {formatted}</p>
-    <p>
+    <p class="jp-copy" set:html={formatCopy(`最終更新 ${formatted}`)}></p>
+    <p class="jp-copy">
       <a href="./about/sources/">データ出典</a>
       <span aria-hidden="true"> / </span>
       <a href="./about/affiliate/">アフィリエイトについて</a>
