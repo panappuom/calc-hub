@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
+import { safeBreak } from "../lib/safe-break";
 const BASE_URL = import.meta.env.BASE_URL;
 ---
 <html lang="ja">
@@ -13,18 +14,18 @@ const BASE_URL = import.meta.env.BASE_URL;
   <body>
     <div class="wrap">
       <a href="./" class="small">← トップ</a>
-      <h1>なんでも計算室</h1>
+      <h1 set:html={safeBreak("なんでも計算室")}></h1>
       <div class="grid">
 
         <div class="card">
-          <h2>税込↔税抜</h2>
+          <h2 set:html={safeBreak("税込↔税抜")}></h2>
           <label for="p1">価格</label><input id="p1" type="number" placeholder="1000" />
           <label for="t1">税率(%)</label><input id="t1" type="number" value="10" />
           <div class="result" id="r1"></div>
         </div>
 
         <div class="card">
-          <h2>体積 m³ ↔ L</h2>
+          <h2 set:html={safeBreak("体積 m³ ↔ L")}></h2>
           <label for="p2">値</label><input id="p2" type="number" placeholder="1" />
           <label for="u2">単位</label>
           <select id="u2"><option value="m3">m³</option><option value="l">L</option></select>
@@ -32,7 +33,7 @@ const BASE_URL = import.meta.env.BASE_URL;
         </div>
 
         <div class="card">
-          <h2>画像 DPI↔px</h2>
+          <h2 set:html={safeBreak("画像 DPI↔px")}></h2>
           <label for="px3">幅(px)</label><input id="px3" type="number" placeholder="1200" />
           <label for="dpi3">DPI</label><input id="dpi3" type="number" placeholder="300" />
           <label for="mm3">用紙幅(mm)</label><input id="mm3" type="number" placeholder="210" />
@@ -40,14 +41,14 @@ const BASE_URL = import.meta.env.BASE_URL;
         </div>
 
         <div class="card">
-          <h2>歩数→距離</h2>
+          <h2 set:html={safeBreak("歩数→距離")}></h2>
           <label for="steps4">歩数</label><input id="steps4" type="number" placeholder="7000" />
           <label for="stride4">歩幅(cm)</label><input id="stride4" type="number" placeholder="65" />
           <div class="result" id="r4"></div>
         </div>
 
         <div class="card">
-          <h2>熱量 kcal ↔ kJ</h2>
+          <h2 set:html={safeBreak("熱量 kcal ↔ kJ")}></h2>
           <label for="val5">値</label><input id="val5" type="number" placeholder="500" />
           <label for="u5">単位</label>
           <select id="u5"><option value="kcal">kcal</option><option value="kj">kJ</option></select>

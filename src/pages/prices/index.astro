@@ -2,6 +2,7 @@
 import "../../styles/global.css";
 import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
+import { safeBreak } from "../../lib/safe-break";
 const BASE_URL = import.meta.env.BASE_URL;
 
 let data;
@@ -45,13 +46,13 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
         </div>
       )}
       <a href="./" class="small">← トップ</a>
-      <h1>今日の最安“候補”</h1>
-      <p class="small">対象カテゴリから毎日、自動で候補を抽出し、価格とポイント相当を目安に並べ替えています。</p>
-      <p class="small">表示価格は取得時点の参考値です。購入前に必ずリンク先の最新情報をご確認ください。</p>
+      <h1 set:html={safeBreak("今日の最安“候補”")}></h1>
+      <p class="small jp-copy">対象カテゴリから毎日、自動で候補を抽出し、価格とポイント相当を目安に並べ替えています。</p>
+      <p class="small jp-copy">表示価格は取得時点の参考値です。購入前に必ずリンク先の最新情報をご確認ください。</p>
       {data ? (
         <>
-          <p class="small">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
-          {data.sourceStatus && <p class="small">対象ストア: 楽天市場、Yahoo!ショッピング</p>}
+          <p class="small jp-copy">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
+          {data.sourceStatus && <p class="small jp-copy">対象ストア: 楽天市場、Yahoo!ショッピング</p>}
           <ul>
             {data.items.map(it => (
               <li>

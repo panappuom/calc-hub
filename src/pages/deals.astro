@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
 import data from "../data/deals.json";
+import { safeBreak } from "../lib/safe-break";
 const BASE_URL = import.meta.env.BASE_URL;
 const items = (data?.items ?? []).slice(0, 100);
 function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
@@ -16,8 +17,8 @@ function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
   <body>
     <div class="wrap">
       <a href="./" class="small">← トップ</a>
-      <h1>今日のセール・割引まとめ</h1>
-      <p class="small">主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は除外。</p>
+      <h1 set:html={safeBreak("今日のセール・割引まとめ")}></h1>
+      <p class="small jp-copy">主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は除外。</p>
       <div class="grid" style="margin-top:8px">
         {items.map((it) => (
           <a
@@ -27,13 +28,13 @@ function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
             rel="nofollow noopener"
             title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
           >
-            <h2 style="margin:0 0 6px 0">{it.title}</h2>
-            <p class="small" style="margin:0 0 6px 0">{it.source} / {fmt(it.date)}</p>
-            {it.description && <p style="margin:0">{it.description}</p>}
+            <h2 style="margin:0 0 6px 0" set:html={safeBreak(it.title)}></h2>
+            <p class="small jp-copy" style="margin:0 0 6px 0">{it.source} / {fmt(it.date)}</p>
+            {it.description && <p class="jp-copy" style="margin:0">{it.description}</p>}
           </a>
         ))}
       </div>
-      <p class="small" style="margin-top:8px">価格・在庫は変動します。最新情報はリンク先でご確認ください。</p>
+      <p class="small jp-copy" style="margin-top:8px">価格・在庫は変動します。最新情報はリンク先でご確認ください。</p>
     </div>
     <Footer />
   </body>
