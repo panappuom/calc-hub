@@ -451,10 +451,6 @@ label {
     position: relative;
   }
 
-  .price-table tbody tr.has-store-badge {
-    padding-top: 56px;
-  }
-
   .price-table tbody tr:nth-child(even) {
     background: var(--card-bg);
   }
