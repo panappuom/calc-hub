@@ -146,6 +146,13 @@ h6 {
   font-weight: 600;
 }
 
+#chart-debug {
+  display: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 input,
 select {
   background: var(--control-bg);
