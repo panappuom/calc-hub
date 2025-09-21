@@ -700,14 +700,17 @@ label {
   width: 100%;
   max-width: var(--wrap-max, 980px);
   margin: 0 auto;
+}
+
+.chart-wrap {
+  width: 100%;
   overflow-x: clip;
 }
 
-.chart-container canvas {
+canvas.chart {
   display: block;
-  max-width: 100%;
   width: 100%;
-  aspect-ratio: 3 / 1;
-  height: auto;
+  max-width: 100%;
+  min-height: 160px;
 }
 
