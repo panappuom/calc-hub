@@ -174,7 +174,7 @@ export function getStaticPaths() {
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <base href={BASE_URL} />
     <script is:inline set:html={clientGlobalsScript}></script>
     <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
@@ -475,23 +475,37 @@ export function getStaticPaths() {
             });
           </script>
           <script>
-            const canvas = document.getElementById('chart');
-            const msg = document.getElementById('chart-msg');
-            const debug = document.getElementById('chart-debug');
+            document.addEventListener('DOMContentLoaded', () => {
+              const canvas = document.getElementById('chart');
+              const msg = document.getElementById('chart-msg');
+              const debug = document.getElementById('chart-debug');
 
-            if (debug) {
-              debug.style.setProperty('display', 'block', 'important');
-            }
+              if (debug) {
+                debug.style.setProperty('display', 'block', 'important');
+              }
 
-            if (canvas && msg) {
-              const sku = canvas.dataset.sku;
+              if (!canvas || !msg) {
+                if (debug) {
+                  debug.textContent = 'chart elements not found';
+                }
+                return;
+              }
+
+              const datasetSku = canvas.dataset?.sku;
+              const rawPathname = typeof window?.location?.pathname === 'string'
+                ? window.location.pathname
+                : '';
+              const normalizedPathname = rawPathname.replace(/\/+$/, '');
+              const pathnameSku = normalizedPathname.slice(normalizedPathname.lastIndexOf('/') + 1);
+              const sku = datasetSku || pathnameSku || '';
               let chartData = null;
               let pendingFrame = null;
               const MAX_RENDER_ATTEMPTS = 3;
 
               function appendDebug(message) {
                 if (!debug || !message) return;
-                const text = String(message);
+                const prefix = sku ? `[${sku}] ` : '[unknown] ';
+                const text = `${prefix}${String(message)}`;
                 debug.textContent = debug.textContent
                   ? `${debug.textContent}\n${text}`
                   : text;
@@ -499,7 +513,8 @@ export function getStaticPaths() {
 
               function showDebug(message, { temporary = false } = {}) {
                 if (!debug) return;
-                const text = message ? String(message) : '';
+                const prefix = sku ? `[${sku}] ` : '[unknown] ';
+                const text = message ? `${prefix}${String(message)}` : '';
                 debug.textContent = text;
                 if (temporary && text) {
                   setTimeout(() => {
@@ -510,7 +525,7 @@ export function getStaticPaths() {
                 }
               }
 
-              function showNoData(reason, { hideCanvas = true } = {}) {
+              function showNoData(reason, currentSku, { hideCanvas = true } = {}) {
                 const detail = reason
                   ? `showNoData: ${String(reason)}`
                   : 'showNoData: reason not specified';
@@ -518,8 +533,13 @@ export function getStaticPaths() {
                 canvas.style.display = hideCanvas ? 'none' : '';
                 msg.textContent = 'データ少';
                 if (reason) {
-                  console.warn('showNoData', reason);
+                  console.warn('showNoData', { reason, sku: currentSku || 'unknown' });
                 }
+              }
+
+              if (!sku) {
+                showNoData('sku not resolved', 'unknown', { hideCanvas: false });
+                return;
               }
 
               function drawChart(dpr) {
@@ -546,7 +566,7 @@ export function getStaticPaths() {
                 msg.textContent = '';
               }
 
-              function renderChart(attempt = 0) {
+              function renderChart(currentSku, attempt = 0) {
                 if (!chartData || chartData.length < 2) return;
                 if (pendingFrame !== null) {
                   cancelAnimationFrame(pendingFrame);
@@ -561,9 +581,9 @@ export function getStaticPaths() {
                   const cssWidth = canvas.clientWidth || canvas.offsetWidth;
                   if (!cssWidth) {
                     if (attempt + 1 < MAX_RENDER_ATTEMPTS) {
-                      renderChart(attempt + 1);
+                      renderChart(currentSku, attempt + 1);
                     } else {
-                      showNoData('zero-size canvas', { hideCanvas: false });
+                      showNoData('zero-size canvas', currentSku, { hideCanvas: false });
                     }
                     return;
                   }
@@ -577,9 +597,9 @@ export function getStaticPaths() {
                   );
                   if (!canvas.width || !canvas.height) {
                     if (attempt + 1 < MAX_RENDER_ATTEMPTS) {
-                      renderChart(attempt + 1);
+                      renderChart(currentSku, attempt + 1);
                     } else {
-                      showNoData('zero-size canvas', { hideCanvas: false });
+                      showNoData('zero-size canvas', currentSku, { hideCanvas: false });
                     }
                     return;
                   }
@@ -600,22 +620,22 @@ export function getStaticPaths() {
               if ('ResizeObserver' in window && resizeTarget) {
                 const observer = new ResizeObserver(() => {
                   if (!chartData || chartData.length < 2) return;
-                  renderChart();
+                  renderChart(sku);
                 });
                 observer.observe(resizeTarget);
               } else {
                 const handleResize = () => {
                   if (!chartData || chartData.length < 2) return;
-                  renderChart();
+                  renderChart(sku);
                 };
                 window.addEventListener('resize', handleResize);
                 window.addEventListener('orientationchange', handleResize);
               }
 
-              async function loadChart() {
+              async function loadChart(currentSku) {
                 try {
                   const url = new URL(
-                    `data/price-history/${sku}.json?t=${Date.now()}`,
+                    `data/price-history/${currentSku}.json?t=${Date.now()}`,
                     document.baseURI,
                   );
                   showDebug(url.toString());
@@ -624,25 +644,25 @@ export function getStaticPaths() {
                     const message = `HTTP ${res.status} ${url.toString()}`;
                     console.error(message);
                     showDebug(message);
-                    showNoData(message);
+                    showNoData(message, currentSku);
                     return;
                   }
                   const hist = await res.json();
                   const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
                   const filtered = list.filter(d => Number.isFinite(d.price)).slice(-30);
                   if (filtered.length < 2) {
-                    showNoData(`insufficient data (n=${filtered.length})`);
+                    showNoData(`insufficient data (n=${filtered.length})`, currentSku);
                     return;
                   }
                   chartData = filtered;
                   canvas.style.display = '';
                   msg.textContent = '';
                   showDebug(url.toString());
-                  renderChart();
+                  renderChart(currentSku);
                 } catch (err) {
                   console.error(err);
                   const errorMessage = err instanceof Error ? err.message : String(err);
-                  showNoData(errorMessage);
+                  showNoData(errorMessage, currentSku);
                   if (window.__APP_DEV__) {
                     const error = err instanceof Error ? err : new Error(String(err));
                     const stackLine = typeof error.stack === 'string' ? error.stack.split('\n')[1]?.trim() : '';
@@ -652,8 +672,8 @@ export function getStaticPaths() {
                 }
               }
 
-              loadChart();
-            }
+              loadChart(sku);
+            });
           </script>
         </>
       ) : (
