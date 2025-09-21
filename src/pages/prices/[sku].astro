@@ -204,7 +204,7 @@ export function getStaticPaths() {
             <h2 set:html={safeBreak("最安情報")}></h2>
             <div class="best-price-cards">
               <section class="best-price-card" role="region" aria-labelledby="best-today-heading">
-                <p class="best-price-card__label" id="best-today-heading">推奨最安（ブランド一致）</p>
+                <p class="best-price-card__label" id="best-today-heading">今日の最安</p>
                 {bestTodayCard ? (
                   <>
                     <p class="best-price-card__line best-price-card__line--primary">
