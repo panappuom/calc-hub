@@ -428,8 +428,8 @@ export function getStaticPaths() {
           <p class="small jp-copy">※実質価格はポイント考慮の試算です。</p>
           <p class="small jp-copy">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
           <h2 set:html={safeBreak("価格推移 (30日)")}></h2>
-          <div class="chart-container">
-            <canvas id="chart" data-sku={sku}></canvas>
+          <div class="chart-container chart-wrap">
+            <canvas id="chart" class="chart" data-sku={sku}></canvas>
           </div>
           <p id="chart-msg" class="small"></p>
           <pre id="chart-debug" class="small" style="display:none" aria-live="polite"></pre>
@@ -482,6 +482,8 @@ export function getStaticPaths() {
             if (canvas && msg) {
               const sku = canvas.dataset.sku;
               let chartData = null;
+              let pendingFrame = null;
+              const MAX_RENDER_ATTEMPTS = 3;
 
               function showDebug(message, { temporary = false } = {}) {
                 if (!debug) return;
@@ -508,43 +510,7 @@ export function getStaticPaths() {
                 }
               }
 
-              function renderChart() {
-                if (!chartData || chartData.length < 2) return;
-                const rect = canvas.getBoundingClientRect();
-                const clientWidth = canvas.clientWidth;
-                const clientHeight = canvas.clientHeight;
-                const offsetWidth = canvas.offsetWidth;
-                const offsetHeight = canvas.offsetHeight;
-                const width = rect.width;
-                const height = rect.height;
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = Math.round(width * dpr);
-                canvas.height = Math.round(height * dpr);
-                if (window.__APP_DEV__) {
-                  console.log('chart canvas dimensions', {
-                    clientWidth,
-                    clientHeight,
-                    offsetWidth,
-                    offsetHeight,
-                    cssWidth: width,
-                    cssHeight: height,
-                    canvasWidth: canvas.width,
-                    canvasHeight: canvas.height,
-                  });
-                }
-                if (
-                  !clientWidth ||
-                  !clientHeight ||
-                  !offsetWidth ||
-                  !offsetHeight ||
-                  !width ||
-                  !height ||
-                  !canvas.width ||
-                  !canvas.height
-                ) {
-                  showNoData('zero-size canvas', { hideCanvas: false });
-                  return;
-                }
+              function drawChart(dpr) {
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -556,20 +522,75 @@ export function getStaticPaths() {
                 chartData.forEach((p, i) => {
                   const x = i * (canvas.width / (chartData.length - 1));
                   const y = canvas.height - (p.price - min) / range * canvas.height;
-                  if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                  if (i === 0) {
+                    ctx.moveTo(x, y);
+                  } else {
+                    ctx.lineTo(x, y);
+                  }
                 });
                 ctx.strokeStyle = '#0070f3';
                 ctx.lineWidth = Math.max(1, dpr);
                 ctx.stroke();
-                  msg.textContent = '';
+                msg.textContent = '';
               }
 
-              function handleResize() {
+              function renderChart(attempt = 0) {
                 if (!chartData || chartData.length < 2) return;
-                renderChart();
+                if (pendingFrame !== null) {
+                  cancelAnimationFrame(pendingFrame);
+                }
+                pendingFrame = requestAnimationFrame(() => {
+                  pendingFrame = null;
+                  const cssWidth = canvas.clientWidth || canvas.offsetWidth;
+                  if (!cssWidth) {
+                    if (attempt + 1 < MAX_RENDER_ATTEMPTS) {
+                      renderChart(attempt + 1);
+                    } else {
+                      showNoData('zero-size canvas', { hideCanvas: false });
+                    }
+                    return;
+                  }
+                  const cssHeight = Math.max(160, Math.round(cssWidth * 0.4));
+                  canvas.style.height = `${cssHeight}px`;
+                  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                  canvas.width = Math.floor(cssWidth * dpr);
+                  canvas.height = Math.floor(cssHeight * dpr);
+                  if (!canvas.width || !canvas.height) {
+                    if (attempt + 1 < MAX_RENDER_ATTEMPTS) {
+                      renderChart(attempt + 1);
+                    } else {
+                      showNoData('zero-size canvas', { hideCanvas: false });
+                    }
+                    return;
+                  }
+                  if (window.__APP_DEV__) {
+                    console.log('chart canvas dimensions', {
+                      cssWidth,
+                      cssHeight,
+                      canvasWidth: canvas.width,
+                      canvasHeight: canvas.height,
+                      dpr,
+                    });
+                  }
+                  drawChart(dpr);
+                });
               }
 
-              window.addEventListener('resize', handleResize);
+              const resizeTarget = canvas.parentElement || canvas;
+              if ('ResizeObserver' in window && resizeTarget) {
+                const observer = new ResizeObserver(() => {
+                  if (!chartData || chartData.length < 2) return;
+                  renderChart();
+                });
+                observer.observe(resizeTarget);
+              } else {
+                const handleResize = () => {
+                  if (!chartData || chartData.length < 2) return;
+                  renderChart();
+                };
+                window.addEventListener('resize', handleResize);
+                window.addEventListener('orientationchange', handleResize);
+              }
 
               async function loadChart() {
                 try {
