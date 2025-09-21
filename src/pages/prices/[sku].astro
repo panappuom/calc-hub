@@ -479,34 +479,46 @@ export function getStaticPaths() {
             const msg = document.getElementById('chart-msg');
             const debug = document.getElementById('chart-debug');
 
+            if (debug) {
+              debug.style.setProperty('display', 'block', 'important');
+            }
+
             if (canvas && msg) {
               const sku = canvas.dataset.sku;
               let chartData = null;
               let pendingFrame = null;
               const MAX_RENDER_ATTEMPTS = 3;
 
+              function appendDebug(message) {
+                if (!debug || !message) return;
+                const text = String(message);
+                debug.textContent = debug.textContent
+                  ? `${debug.textContent}\n${text}`
+                  : text;
+              }
+
               function showDebug(message, { temporary = false } = {}) {
                 if (!debug) return;
-                debug.textContent = message;
-                debug.style.display = message ? '' : 'none';
-                if (temporary && message) {
+                const text = message ? String(message) : '';
+                debug.textContent = text;
+                if (temporary && text) {
                   setTimeout(() => {
-                    if (debug.textContent === message) {
+                    if (debug.textContent === text) {
                       debug.textContent = '';
-                      debug.style.display = 'none';
                     }
                   }, 5000);
                 }
               }
 
               function showNoData(reason, { hideCanvas = true } = {}) {
+                const detail = reason
+                  ? `showNoData: ${String(reason)}`
+                  : 'showNoData: reason not specified';
+                appendDebug(detail);
                 canvas.style.display = hideCanvas ? 'none' : '';
                 msg.textContent = 'データ少';
                 if (reason) {
                   console.warn('showNoData', reason);
-                  if (debug && !debug.textContent) {
-                    showDebug(reason);
-                  }
                 }
               }
 
@@ -541,6 +553,11 @@ export function getStaticPaths() {
                 }
                 pendingFrame = requestAnimationFrame(() => {
                   pendingFrame = null;
+                  const clientWidth = canvas.clientWidth;
+                  const offsetWidth = canvas.offsetWidth;
+                  appendDebug(
+                    `render attempt ${attempt + 1}: clientWidth=${clientWidth} offsetWidth=${offsetWidth}`,
+                  );
                   const cssWidth = canvas.clientWidth || canvas.offsetWidth;
                   if (!cssWidth) {
                     if (attempt + 1 < MAX_RENDER_ATTEMPTS) {
@@ -555,6 +572,9 @@ export function getStaticPaths() {
                   const dpr = Math.min(window.devicePixelRatio || 1, 2);
                   canvas.width = Math.floor(cssWidth * dpr);
                   canvas.height = Math.floor(cssHeight * dpr);
+                  appendDebug(
+                    `render attempt ${attempt + 1}: canvas.width=${canvas.width} canvas.height=${canvas.height} dpr=${dpr}`,
+                  );
                   if (!canvas.width || !canvas.height) {
                     if (attempt + 1 < MAX_RENDER_ATTEMPTS) {
                       renderChart(attempt + 1);
@@ -604,14 +624,14 @@ export function getStaticPaths() {
                     const message = `HTTP ${res.status} ${url.toString()}`;
                     console.error(message);
                     showDebug(message);
-                    showNoData();
+                    showNoData(message);
                     return;
                   }
                   const hist = await res.json();
                   const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
                   const filtered = list.filter(d => Number.isFinite(d.price)).slice(-30);
                   if (filtered.length < 2) {
-                    showNoData();
+                    showNoData(`insufficient data (n=${filtered.length})`);
                     return;
                   }
                   chartData = filtered;
@@ -621,7 +641,8 @@ export function getStaticPaths() {
                   renderChart();
                 } catch (err) {
                   console.error(err);
-                  showNoData();
+                  const errorMessage = err instanceof Error ? err.message : String(err);
+                  showNoData(errorMessage);
                   if (window.__APP_DEV__) {
                     const error = err instanceof Error ? err : new Error(String(err));
                     const stackLine = typeof error.stack === 'string' ? error.stack.split('\n')[1]?.trim() : '';
