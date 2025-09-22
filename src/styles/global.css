@@ -90,7 +90,7 @@
     --chart-text: var(--fg-muted);
     --chart-badge-bg: rgba(15, 23, 42, 0.16);
     --chart-badge-bg: color-mix(in srgb, var(--fg-default) 22%, var(--bg-default) 78%);
-    --chart-badge-fg: var(--fg-inverted);
+    --chart-badge-fg: var(--badge-fg);
   }
 }
 
