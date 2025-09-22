@@ -429,8 +429,17 @@ export function getStaticPaths() {
           <p class="small jp-copy">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
           <h2 set:html={safeBreak("価格推移 (30日)")}></h2>
           <div class="chart-container chart-wrap">
-            <canvas id="chart" class="chart" data-sku={sku}></canvas>
+            <div id="chart-skeleton" class="chart-skeleton" aria-hidden="true"></div>
+            <canvas
+              id="chart"
+              class="chart"
+              data-sku={sku}
+              tabindex="0"
+              aria-label="過去30日の価格推移。左右キーでポイントを移動できます。"
+            ></canvas>
+            <div id="chart-tooltip" class="chart-tooltip" role="presentation" aria-hidden="true"></div>
           </div>
+          <div id="chart-summary" class="sr-only" aria-live="polite"></div>
           <p id="chart-msg" class="small"></p>
           <pre id="chart-debug" class="small" aria-live="polite"></pre>
           <p class="small jp-copy">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
@@ -479,6 +488,9 @@ export function getStaticPaths() {
               const canvas = document.getElementById('chart');
               const msg = document.getElementById('chart-msg');
               const debug = document.getElementById('chart-debug');
+              const tooltip = document.getElementById('chart-tooltip');
+              const summary = document.getElementById('chart-summary');
+              const chartWrap = canvas?.closest('.chart-wrap') || null;
               const search = typeof window?.location?.search === 'string'
                 ? window.location.search
                 : '';
@@ -505,8 +517,14 @@ export function getStaticPaths() {
               const pathnameSku = normalizedPathname.slice(normalizedPathname.lastIndexOf('/') + 1);
               const sku = datasetSku || pathnameSku || '';
               let chartData = null;
+              let chartLayout = null;
               let pendingFrame = null;
+              let currentDpr = 1;
+              let hoverIndex = null;
+              let pinnedIndex = null;
+              let isPointerDown = false;
               const MAX_RENDER_ATTEMPTS = 3;
+              const currencyFormatter = new Intl.NumberFormat('ja-JP');
 
               function appendDebug(message) {
                 if (!debug || !message) return;
@@ -531,11 +549,188 @@ export function getStaticPaths() {
                 }
               }
 
+              function setLoading(isLoading) {
+                if (chartWrap) {
+                  chartWrap.classList.toggle('is-loading', Boolean(isLoading));
+                  chartWrap.classList.toggle('is-loaded', !isLoading);
+                }
+                if (isLoading) {
+                  canvas.setAttribute('aria-busy', 'true');
+                } else {
+                  canvas.removeAttribute('aria-busy');
+                }
+              }
+
+              function formatYen(value) {
+                const num = Number(value);
+                if (!Number.isFinite(num)) {
+                  return '';
+                }
+                return `¥${currencyFormatter.format(Math.round(num))}`;
+              }
+
+              function parseDate(value) {
+                if (!value) return null;
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) return null;
+                return date;
+              }
+
+              function formatDateLabel(value) {
+                const date = parseDate(value);
+                if (!date) return '';
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+              }
+
+              function niceNumber(range, round) {
+                if (range <= 0) return 1;
+                const exponent = Math.floor(Math.log10(range));
+                const fraction = range / 10 ** exponent;
+                let niceFraction;
+                if (round) {
+                  if (fraction < 1.5) niceFraction = 1;
+                  else if (fraction < 3) niceFraction = 2;
+                  else if (fraction < 7) niceFraction = 5;
+                  else niceFraction = 10;
+                } else {
+                  if (fraction <= 1) niceFraction = 1;
+                  else if (fraction <= 2) niceFraction = 2;
+                  else if (fraction <= 5) niceFraction = 5;
+                  else niceFraction = 10;
+                }
+                return niceFraction * 10 ** exponent;
+              }
+
+              function computeNiceScale(values, tickTarget = 6) {
+                if (!values.length) {
+                  return {
+                    min: 0,
+                    max: 1,
+                    niceMin: 0,
+                    niceMax: 1,
+                    step: 1,
+                  };
+                }
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+                if (min === max) {
+                  const padding = Math.max(1, Math.abs(min) * 0.05);
+                  return {
+                    min,
+                    max,
+                    niceMin: min - padding,
+                    niceMax: max + padding,
+                    step: Math.max(1, padding),
+                  };
+                }
+                const range = max - min;
+                const niceRange = niceNumber(range, false);
+                const step = Math.max(1, niceNumber(niceRange / Math.max(1, tickTarget - 1), true));
+                const niceMin = Math.floor(min / step) * step;
+                const niceMax = Math.ceil(max / step) * step;
+                return { min, max, niceMin, niceMax, step };
+              }
+
+              function drawRoundedRectPath(context, x, y, width, height, radius) {
+                const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+                context.beginPath();
+                context.moveTo(x + r, y);
+                context.lineTo(x + width - r, y);
+                context.quadraticCurveTo(x + width, y, x + width, y + r);
+                context.lineTo(x + width, y + height - r);
+                context.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+                context.lineTo(x + r, y + height);
+                context.quadraticCurveTo(x, y + height, x, y + height - r);
+                context.lineTo(x, y + r);
+                context.quadraticCurveTo(x, y, x + r, y);
+                context.closePath();
+              }
+
+              function getDisplayIndex() {
+                return pinnedIndex != null ? pinnedIndex : hoverIndex;
+              }
+
+              function clearTooltip() {
+                if (!tooltip) return;
+                tooltip.classList.remove('is-visible');
+                tooltip.setAttribute('aria-hidden', 'true');
+              }
+
+              function updateTooltip() {
+                if (!tooltip || !chartLayout || !chartData || chartData.length < 2) {
+                  clearTooltip();
+                  return;
+                }
+                const activeIndex = getDisplayIndex();
+                if (activeIndex == null || !chartLayout.points[activeIndex]) {
+                  clearTooltip();
+                  return;
+                }
+                const point = chartLayout.points[activeIndex];
+                const datum = point.data;
+                const dateText = formatDateLabel(datum.date);
+                const priceText = formatYen(datum.price);
+                tooltip.innerHTML = `
+                  <div class="chart-tooltip__date">${dateText}</div>
+                  <div class="chart-tooltip__price">実質 ${priceText}</div>
+                `;
+                if (chartWrap && canvas) {
+                  const containerRect = chartWrap.getBoundingClientRect();
+                  const canvasRect = canvas.getBoundingClientRect();
+                  const scaleX = canvasRect.width ? canvasRect.width / canvas.width : 1;
+                  const scaleY = canvasRect.height ? canvasRect.height / canvas.height : 1;
+                  const left = (canvasRect.left - containerRect.left) + point.x * scaleX;
+                  const top = (canvasRect.top - containerRect.top) + point.y * scaleY;
+                  tooltip.style.left = `${left}px`;
+                  tooltip.style.top = `${top}px`;
+                  tooltip.style.setProperty('--shift-x', '0px');
+                  tooltip.classList.add('is-visible');
+                  tooltip.setAttribute('aria-hidden', 'false');
+                  const tooltipRect = tooltip.getBoundingClientRect();
+                  let shiftX = 0;
+                  if (tooltipRect.left < containerRect.left + 4) {
+                    shiftX = containerRect.left + 4 - tooltipRect.left;
+                  } else if (tooltipRect.right > containerRect.right - 4) {
+                    shiftX = containerRect.right - 4 - tooltipRect.right;
+                  }
+                  tooltip.style.setProperty('--shift-x', `${shiftX}px`);
+                }
+                tooltip.dataset.pinned = pinnedIndex != null ? 'true' : 'false';
+              }
+
+              function updateSummary() {
+                if (!summary) return;
+                if (!chartData || chartData.length < 2) {
+                  summary.textContent = '';
+                  return;
+                }
+                const total = chartData.reduce((acc, item) => acc + Number(item.price || 0), 0);
+                const avg = total / chartData.length;
+                let minItem = chartData[0];
+                let maxItem = chartData[0];
+                chartData.forEach(item => {
+                  if (item.price < minItem.price) minItem = item;
+                  if (item.price > maxItem.price) maxItem = item;
+                });
+                const latest = chartData[chartData.length - 1];
+                summary.textContent = `${chartData.length}日: 最安${formatYen(minItem.price)}(${formatDateLabel(minItem.date)}), 最高${formatYen(maxItem.price)}(${formatDateLabel(maxItem.date)}), 平均${formatYen(avg)}。最新${formatYen(latest.price)}(${formatDateLabel(latest.date)})。`;
+              }
+
               function showNoData(reason, currentSku, { hideCanvas = true } = {}) {
                 const detail = reason
                   ? `showNoData: ${String(reason)}`
                   : 'showNoData: reason not specified';
                 appendDebug(detail);
+                if (chartWrap) {
+                  setLoading(false);
+                }
+                clearTooltip();
+                chartLayout = null;
+                hoverIndex = null;
+                pinnedIndex = null;
+                if (summary) {
+                  summary.textContent = '';
+                }
                 canvas.style.display = hideCanvas ? 'none' : '';
                 msg.textContent = 'データ少';
                 if (reason) {
@@ -552,23 +747,153 @@ export function getStaticPaths() {
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const padding = {
+                  top: Math.round(12 * dpr),
+                  right: Math.round(16 * dpr),
+                  bottom: Math.round(36 * dpr),
+                  left: Math.round(64 * dpr),
+                };
+                const width = canvas.width;
+                const height = canvas.height;
+                const innerWidth = Math.max(1, width - padding.left - padding.right);
+                const innerHeight = Math.max(1, height - padding.top - padding.bottom);
                 const prices = chartData.map(d => d.price);
-                const min = Math.min(...prices);
-                const max = Math.max(...prices);
-                const range = max - min || 1;
+                const { niceMin, niceMax, step } = computeNiceScale(prices);
+                const yRange = niceMax - niceMin || 1;
+                const yTicks = [];
+                for (let value = niceMin; value <= niceMax + step / 2; value += step) {
+                  yTicks.push(value);
+                }
+                const xTicks = [];
+                const desiredXTicks = 6;
+                const stepCount = Math.max(1, Math.ceil((chartData.length - 1) / Math.max(1, desiredXTicks - 1)));
+                for (let i = 0; i < chartData.length; i += stepCount) {
+                  xTicks.push(i);
+                }
+                if (xTicks[xTicks.length - 1] !== chartData.length - 1) {
+                  xTicks.push(chartData.length - 1);
+                }
+                ctx.save();
+                ctx.lineWidth = Math.max(1, dpr);
+                ctx.strokeStyle = 'rgba(15, 23, 42, 0.24)';
                 ctx.beginPath();
-                chartData.forEach((p, i) => {
-                  const x = i * (canvas.width / (chartData.length - 1));
-                  const y = canvas.height - (p.price - min) / range * canvas.height;
-                  if (i === 0) {
-                    ctx.moveTo(x, y);
+                ctx.moveTo(padding.left, height - padding.bottom);
+                ctx.lineTo(width - padding.right, height - padding.bottom);
+                ctx.moveTo(padding.left, padding.top);
+                ctx.lineTo(padding.left, height - padding.bottom);
+                ctx.stroke();
+
+                ctx.setLineDash([4 * dpr, 4 * dpr]);
+                ctx.strokeStyle = 'rgba(15, 23, 42, 0.12)';
+                yTicks.forEach(value => {
+                  const y = padding.top + (1 - (value - niceMin) / yRange) * innerHeight;
+                  ctx.beginPath();
+                  ctx.moveTo(padding.left, y);
+                  ctx.lineTo(width - padding.right, y);
+                  ctx.stroke();
+                });
+                ctx.setLineDash([]);
+
+                const fontSize = 12 * dpr;
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+                ctx.font = `${fontSize}px "system-ui", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+                ctx.textBaseline = 'middle';
+                ctx.textAlign = 'right';
+                yTicks.forEach(value => {
+                  const y = padding.top + (1 - (value - niceMin) / yRange) * innerHeight;
+                  ctx.fillText(formatYen(value), padding.left - 8 * dpr, y);
+                });
+
+                ctx.textBaseline = 'top';
+                ctx.textAlign = 'center';
+                xTicks.forEach(index => {
+                  const ratio = chartData.length > 1 ? index / (chartData.length - 1) : 0;
+                  const x = padding.left + ratio * innerWidth;
+                  ctx.fillText(formatDateLabel(chartData[index].date), x, height - padding.bottom + 8 * dpr);
+                });
+
+                const points = chartData.map((datum, index) => {
+                  const ratio = chartData.length > 1 ? index / (chartData.length - 1) : 0;
+                  const x = padding.left + ratio * innerWidth;
+                  const y = padding.top + (1 - (datum.price - niceMin) / yRange) * innerHeight;
+                  return { x, y, data: datum };
+                });
+
+                ctx.strokeStyle = '#2563eb';
+                ctx.lineWidth = Math.max(2 * dpr, 2);
+                ctx.beginPath();
+                points.forEach((point, index) => {
+                  if (index === 0) {
+                    ctx.moveTo(point.x, point.y);
                   } else {
-                    ctx.lineTo(x, y);
+                    ctx.lineTo(point.x, point.y);
                   }
                 });
-                ctx.strokeStyle = '#0070f3';
-                ctx.lineWidth = Math.max(1, dpr);
                 ctx.stroke();
+
+                ctx.fillStyle = '#2563eb';
+                points.forEach(point => {
+                  ctx.beginPath();
+                  ctx.arc(point.x, point.y, 2.5 * dpr, 0, Math.PI * 2);
+                  ctx.fill();
+                });
+
+                const activeIndex = getDisplayIndex();
+                if (activeIndex != null && points[activeIndex]) {
+                  const activePoint = points[activeIndex];
+                  ctx.strokeStyle = 'rgba(37, 99, 235, 0.4)';
+                  ctx.lineWidth = dpr;
+                  ctx.beginPath();
+                  ctx.moveTo(activePoint.x, padding.top);
+                  ctx.lineTo(activePoint.x, height - padding.bottom);
+                  ctx.stroke();
+                  ctx.fillStyle = '#fff';
+                  ctx.beginPath();
+                  ctx.arc(activePoint.x, activePoint.y, 5 * dpr, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.strokeStyle = '#2563eb';
+                  ctx.lineWidth = 2 * dpr;
+                  ctx.beginPath();
+                  ctx.arc(activePoint.x, activePoint.y, 5 * dpr, 0, Math.PI * 2);
+                  ctx.stroke();
+                }
+
+                const lastPoint = points[points.length - 1];
+                if (lastPoint) {
+                  const lastDatum = lastPoint.data;
+                  const lastDate = parseDate(lastDatum.date);
+                  const now = new Date();
+                  const isToday = lastDate
+                    && now.getFullYear() === lastDate.getFullYear()
+                    && now.getMonth() === lastDate.getMonth()
+                    && now.getDate() === lastDate.getDate();
+                  const badgeLabel = `${isToday ? '本日' : '最新'} ${formatYen(lastDatum.price)}`;
+                  const badgePaddingX = 8 * dpr;
+                  const badgePaddingY = 4 * dpr;
+                  ctx.font = `${12 * dpr}px "system-ui", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+                  const textWidth = ctx.measureText(badgeLabel).width;
+                  const badgeWidth = textWidth + badgePaddingX * 2;
+                  const badgeHeight = 20 * dpr;
+                  const badgeX = Math.min(width - padding.right - badgeWidth, lastPoint.x + 8 * dpr);
+                  const badgeY = Math.max(padding.top, lastPoint.y - badgeHeight - 8 * dpr);
+                  ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+                  drawRoundedRectPath(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 6 * dpr);
+                  ctx.fill();
+                  ctx.fillStyle = '#fff';
+                  ctx.textAlign = 'left';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillText(badgeLabel, badgeX + badgePaddingX, badgeY + badgeHeight / 2);
+                }
+
+                ctx.restore();
+                chartLayout = {
+                  padding,
+                  innerWidth,
+                  innerHeight,
+                  points,
+                  niceMin,
+                  niceMax,
+                };
                 msg.textContent = '';
               }
 
@@ -618,7 +943,9 @@ export function getStaticPaths() {
                       dpr,
                     });
                   }
+                  currentDpr = dpr;
                   drawChart(dpr);
+                  updateTooltip();
                 });
               }
 
@@ -638,6 +965,127 @@ export function getStaticPaths() {
                 window.addEventListener('orientationchange', handleResize);
               }
 
+              function getNearestIndex(deviceX) {
+                if (!chartLayout || !chartLayout.points || !chartLayout.points.length) {
+                  return null;
+                }
+                let nearest = 0;
+                let minDistance = Number.POSITIVE_INFINITY;
+                chartLayout.points.forEach((point, index) => {
+                  const distance = Math.abs(point.x - deviceX);
+                  if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = index;
+                  }
+                });
+                return nearest;
+              }
+
+              function refreshVisualState() {
+                if (!chartData || chartData.length < 2) {
+                  clearTooltip();
+                  return;
+                }
+                drawChart(currentDpr);
+                updateTooltip();
+              }
+
+              if (canvas) {
+                canvas.addEventListener('pointerdown', event => {
+                  if (!chartLayout || !chartData || chartData.length < 2) return;
+                  isPointerDown = true;
+                  const rect = canvas.getBoundingClientRect();
+                  const scale = canvas.width / rect.width;
+                  const deviceX = (event.clientX - rect.left) * scale;
+                  const index = getNearestIndex(deviceX);
+                  if (typeof canvas.focus === 'function') {
+                    try {
+                      canvas.focus({ preventScroll: true });
+                    } catch {
+                      canvas.focus();
+                    }
+                  }
+                  if (pinnedIndex === index) {
+                    pinnedIndex = null;
+                    hoverIndex = null;
+                    refreshVisualState();
+                    return;
+                  }
+                  pinnedIndex = index;
+                  hoverIndex = index;
+                  refreshVisualState();
+                });
+                canvas.addEventListener('pointerup', () => {
+                  isPointerDown = false;
+                });
+                canvas.addEventListener('pointercancel', () => {
+                  isPointerDown = false;
+                });
+                canvas.addEventListener('pointerleave', () => {
+                  isPointerDown = false;
+                  if (pinnedIndex == null) {
+                    hoverIndex = null;
+                    clearTooltip();
+                    drawChart(currentDpr);
+                  }
+                });
+                canvas.addEventListener('pointermove', event => {
+                  if (!chartLayout || !chartData || chartData.length < 2) return;
+                  if (pinnedIndex != null && !isPointerDown) {
+                    return;
+                  }
+                  const rect = canvas.getBoundingClientRect();
+                  const scale = canvas.width / rect.width;
+                  const deviceX = (event.clientX - rect.left) * scale;
+                  const index = getNearestIndex(deviceX);
+                  if (index !== hoverIndex) {
+                    hoverIndex = index;
+                    if (pinnedIndex == null || isPointerDown) {
+                      refreshVisualState();
+                    } else {
+                      updateTooltip();
+                    }
+                  } else if (pinnedIndex == null) {
+                    updateTooltip();
+                  }
+                });
+                canvas.addEventListener('focus', () => {
+                  if (!chartData || chartData.length < 2) return;
+                  if (pinnedIndex == null && hoverIndex == null) {
+                    pinnedIndex = chartData.length - 1;
+                    hoverIndex = pinnedIndex;
+                    refreshVisualState();
+                  }
+                });
+                canvas.addEventListener('keydown', event => {
+                  if (!chartData || chartData.length < 2) return;
+                  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    const direction = event.key === 'ArrowLeft' ? -1 : 1;
+                    const baseIndex = getDisplayIndex() != null ? getDisplayIndex() : (direction > 0 ? 0 : chartData.length - 1);
+                    let nextIndex = baseIndex + direction;
+                    nextIndex = Math.max(0, Math.min(chartData.length - 1, nextIndex));
+                    pinnedIndex = nextIndex;
+                    hoverIndex = nextIndex;
+                    refreshVisualState();
+                  }
+                });
+              }
+
+              document.addEventListener('pointerdown', event => {
+                if (!canvas) return;
+                if (!chartWrap) return;
+                if (!chartWrap.contains(event.target)) {
+                  pinnedIndex = null;
+                  hoverIndex = null;
+                  if (!chartData || chartData.length < 2) {
+                    clearTooltip();
+                  } else {
+                    refreshVisualState();
+                  }
+                }
+              });
+
               async function loadChart(currentSku) {
                 try {
                   const url = new URL(
@@ -645,6 +1093,12 @@ export function getStaticPaths() {
                     document.baseURI,
                   );
                   showDebug(url.toString());
+                  if (chartWrap) {
+                    setLoading(true);
+                  }
+                  canvas.style.display = 'none';
+                  msg.textContent = '読み込み中…';
+                  clearTooltip();
                   const res = await fetch(url);
                   if (!res.ok) {
                     const message = `HTTP ${res.status} ${url.toString()}`;
@@ -655,7 +1109,22 @@ export function getStaticPaths() {
                   }
                   const hist = await res.json();
                   const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
-                  const filtered = list.filter(d => Number.isFinite(d.price)).slice(-30);
+                  const filtered = list
+                    .map(item => {
+                      const price = Number(item?.price);
+                      const date = item?.date;
+                      if (!Number.isFinite(price) || !date) {
+                        return null;
+                      }
+                      return { date, price };
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => {
+                      const left = parseDate(a.date)?.getTime() ?? 0;
+                      const right = parseDate(b.date)?.getTime() ?? 0;
+                      return left - right;
+                    })
+                    .slice(-30);
                   if (filtered.length < 2) {
                     showNoData(`insufficient data (n=${filtered.length})`, currentSku);
                     return;
@@ -663,6 +1132,10 @@ export function getStaticPaths() {
                   chartData = filtered;
                   canvas.style.display = '';
                   msg.textContent = '';
+                  if (chartWrap) {
+                    setLoading(false);
+                  }
+                  updateSummary();
                   showDebug(url.toString());
                   renderChart(currentSku);
                 } catch (err) {

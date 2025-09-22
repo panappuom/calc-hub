@@ -710,8 +710,76 @@ label {
 }
 
 .chart-wrap {
+  position: relative;
   width: 100%;
   overflow-x: clip;
+  min-height: 160px;
+}
+
+.chart-wrap canvas.chart {
+  transition: opacity 0.3s ease;
+}
+
+.chart-wrap.is-loading canvas.chart {
+  opacity: 0;
+}
+
+.chart-wrap.is-loaded canvas.chart {
+  opacity: 1;
+}
+
+.chart-skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 50%, #e2e8f0 100%);
+  background-size: 200% 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.chart-wrap.is-loading .chart-skeleton {
+  opacity: 1;
+  animation: chart-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(calc(-50% + var(--shift-x, 0px)), -120%);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
+  min-width: 120px;
+}
+
+.chart-tooltip.is-visible {
+  opacity: 1;
+}
+
+.chart-tooltip[data-pinned="true"] {
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.chart-tooltip__date {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(248, 250, 252, 0.8);
+}
+
+.chart-tooltip__price {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 canvas.chart {
@@ -719,5 +787,17 @@ canvas.chart {
   width: 100%;
   max-width: 100%;
   min-height: 160px;
+}
+
+@keyframes chart-skeleton-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
