@@ -428,25 +428,16 @@ export function getStaticPaths() {
           <p class="small jp-copy">※実質価格はポイント考慮の試算です。</p>
           <p class="small jp-copy">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
           <h2 set:html={safeBreak("価格推移 (30日)")}></h2>
-          <div class="chart-container">
-            <div class="chart-header">
-              <label class="chart-toggle" id="chart-toggle-label">
-                <input type="checkbox" id="chart-toggle-outliers" />
-                <span>外れ値も表示</span>
-              </label>
-              <span id="chart-outlier-badge" class="chart-badge" hidden>外れ値あり</span>
-            </div>
-            <div class="chart-wrap">
-              <div id="chart-skeleton" class="chart-skeleton" aria-hidden="true"></div>
-              <canvas
-                id="chart"
-                class="chart"
-                data-sku={sku}
-                tabindex="0"
-                aria-label="過去30日の価格推移。左右キーでポイントを移動できます。"
-              ></canvas>
-              <div id="chart-tooltip" class="chart-tooltip" role="presentation" aria-hidden="true"></div>
-            </div>
+          <div class="chart-container chart-wrap">
+            <div id="chart-skeleton" class="chart-skeleton" aria-hidden="true"></div>
+            <canvas
+              id="chart"
+              class="chart"
+              data-sku={sku}
+              tabindex="0"
+              aria-label="過去30日の価格推移。左右キーでポイントを移動できます。"
+            ></canvas>
+            <div id="chart-tooltip" class="chart-tooltip" role="presentation" aria-hidden="true"></div>
           </div>
           <div id="chart-summary" class="sr-only" aria-live="polite"></div>
           <p id="chart-msg" class="small"></p>
@@ -499,9 +490,6 @@ export function getStaticPaths() {
               const debug = document.getElementById('chart-debug');
               const tooltip = document.getElementById('chart-tooltip');
               const summary = document.getElementById('chart-summary');
-              const outlierToggle = document.getElementById('chart-toggle-outliers');
-              const outlierToggleLabel = document.getElementById('chart-toggle-label');
-              const outlierBadge = document.getElementById('chart-outlier-badge');
               const chartWrap = canvas?.closest('.chart-wrap') || null;
               const search = typeof window?.location?.search === 'string'
                 ? window.location.search
@@ -528,19 +516,14 @@ export function getStaticPaths() {
               const normalizedPathname = rawPathname.replace(/\/+$/, '');
               const pathnameSku = normalizedPathname.slice(normalizedPathname.lastIndexOf('/') + 1);
               const sku = datasetSku || pathnameSku || '';
-              let fullChartData = null;
               let chartData = null;
               let chartLayout = null;
-              let outlierInfo = null;
-              let includeOutliers = false;
               let pendingFrame = null;
               let currentDpr = 1;
               let hoverIndex = null;
               let pinnedIndex = null;
               let isPointerDown = false;
               const MAX_RENDER_ATTEMPTS = 3;
-              updateOutlierUI();
-              updateOutlierMessage();
               const currencyFormatter = new Intl.NumberFormat('ja-JP');
 
               function appendDebug(message) {
@@ -656,126 +639,6 @@ export function getStaticPaths() {
                 return { min, max, niceMin, niceMax, step };
               }
 
-              function computePercentile(sortedValues, percentile) {
-                if (!sortedValues.length) return null;
-                const rank = (sortedValues.length - 1) * percentile;
-                const lowerIndex = Math.floor(rank);
-                const upperIndex = Math.ceil(rank);
-                const lowerValue = sortedValues[lowerIndex];
-                const upperValue = sortedValues[upperIndex];
-                if (lowerValue == null) return null;
-                if (upperValue == null) return lowerValue;
-                if (lowerIndex === upperIndex) return lowerValue;
-                const fraction = rank - lowerIndex;
-                return lowerValue + (upperValue - lowerValue) * fraction;
-              }
-
-              function analyzeOutliers(data) {
-                if (!data || data.length < 2) {
-                  return { hasOutliers: false };
-                }
-                const prices = data.map(item => item.price).filter(Number.isFinite);
-                if (prices.length < 2) {
-                  return { hasOutliers: false };
-                }
-                const sorted = [...prices].sort((a, b) => a - b);
-                const lower = computePercentile(sorted, 0.05);
-                const upper = computePercentile(sorted, 0.95);
-                if (lower == null || upper == null || !Number.isFinite(lower) || !Number.isFinite(upper)) {
-                  return { hasOutliers: false };
-                }
-                if (upper <= lower) {
-                  return { hasOutliers: false };
-                }
-                const hasOutliers = sorted.some(value => value < lower || value > upper);
-                return { hasOutliers, lower, upper };
-              }
-
-              function updateOutlierUI() {
-                const hasOutliers = Boolean(outlierInfo && outlierInfo.hasOutliers);
-                if (outlierToggle) {
-                  outlierToggle.disabled = !hasOutliers;
-                  if (!hasOutliers) {
-                    outlierToggle.checked = false;
-                  } else {
-                    outlierToggle.checked = includeOutliers;
-                  }
-                }
-                if (outlierToggleLabel) {
-                  const disabled = Boolean(outlierToggle?.disabled);
-                  outlierToggleLabel.classList.toggle('is-disabled', disabled);
-                }
-                if (outlierBadge) {
-                  outlierBadge.hidden = !hasOutliers;
-                }
-              }
-
-              function updateOutlierMessage() {
-                if (!msg) return;
-                if (outlierInfo && outlierInfo.hasOutliers) {
-                  msg.dataset.state = 'info';
-                  msg.textContent = includeOutliers
-                    ? '外れ値を含めて表示しています。'
-                    : '外れ値を除外して表示しています。';
-                } else {
-                  if (msg.dataset.state === 'info') {
-                    delete msg.dataset.state;
-                  }
-                  if (!msg.dataset.state) {
-                    msg.textContent = '';
-                  }
-                }
-              }
-
-              function applyDisplayMode({ shouldRender = true } = {}) {
-                if (!fullChartData || fullChartData.length < 2) {
-                  return;
-                }
-                const info = outlierInfo;
-                const useRaw = includeOutliers || !info || !info.hasOutliers;
-                let lower = info?.lower ?? null;
-                let upper = info?.upper ?? null;
-                if (lower != null && upper != null && lower > upper) {
-                  const temp = lower;
-                  lower = upper;
-                  upper = temp;
-                }
-                chartData = fullChartData.map(item => {
-                  let value = item.price;
-                  if (!useRaw && lower != null && upper != null) {
-                    value = Math.min(Math.max(value, lower), upper);
-                  }
-                  return {
-                    date: item.date,
-                    price: value,
-                    rawPrice: item.price,
-                    isClamped: !useRaw && value !== item.price,
-                  };
-                });
-                if (!chartData || chartData.length < 2) {
-                  showNoData('insufficient data', sku);
-                  return;
-                }
-                chartLayout = null;
-                hoverIndex = null;
-                if (pinnedIndex != null) {
-                  pinnedIndex = Math.max(0, Math.min(chartData.length - 1, pinnedIndex));
-                }
-                updateOutlierUI();
-                updateOutlierMessage();
-                updateSummary();
-                if (shouldRender) {
-                  renderChart(sku);
-                }
-              }
-
-              if (outlierToggle) {
-                outlierToggle.addEventListener('change', () => {
-                  includeOutliers = outlierToggle.checked;
-                  applyDisplayMode();
-                });
-              }
-
               function resolveCssValue(styles, name, fallback, depth = 0) {
                 if (depth > 4) {
                   return fallback;
@@ -840,11 +703,7 @@ export function getStaticPaths() {
                 const point = chartLayout.points[activeIndex];
                 const datum = point.data;
                 const dateText = formatDateLabel(datum.date);
-                const displayPrice = formatYen(datum.price);
-                const rawPrice = datum.rawPrice != null ? formatYen(datum.rawPrice) : displayPrice;
-                const priceText = !includeOutliers && datum.rawPrice != null && datum.rawPrice !== datum.price
-                  ? `${displayPrice} (実値 ${rawPrice})`
-                  : displayPrice;
+                const priceText = formatYen(datum.price);
                 tooltip.innerHTML = `
                   <div class="chart-tooltip__date">${dateText}</div>
                   <div class="chart-tooltip__price">${priceText}</div>
@@ -875,21 +734,20 @@ export function getStaticPaths() {
 
               function updateSummary() {
                 if (!summary) return;
-                const source = fullChartData && fullChartData.length >= 2 ? fullChartData : chartData;
-                if (!source || source.length < 2) {
+                if (!chartData || chartData.length < 2) {
                   summary.textContent = '';
                   return;
                 }
-                const total = source.reduce((acc, item) => acc + Number(item.price || 0), 0);
-                const avg = total / source.length;
-                let minItem = source[0];
-                let maxItem = source[0];
-                source.forEach(item => {
+                const total = chartData.reduce((acc, item) => acc + Number(item.price || 0), 0);
+                const avg = total / chartData.length;
+                let minItem = chartData[0];
+                let maxItem = chartData[0];
+                chartData.forEach(item => {
                   if (item.price < minItem.price) minItem = item;
                   if (item.price > maxItem.price) maxItem = item;
                 });
-                const latest = source[source.length - 1];
-                summary.textContent = `${source.length}日: 最安${formatYen(minItem.price)}(${formatDateLabel(minItem.date)}), 最高${formatYen(maxItem.price)}(${formatDateLabel(maxItem.date)}), 平均${formatYen(avg)}。最新${formatYen(latest.price)}(${formatDateLabel(latest.date)})。`;
+                const latest = chartData[chartData.length - 1];
+                summary.textContent = `${chartData.length}日: 最安${formatYen(minItem.price)}(${formatDateLabel(minItem.date)}), 最高${formatYen(maxItem.price)}(${formatDateLabel(maxItem.date)}), 平均${formatYen(avg)}。最新${formatYen(latest.price)}(${formatDateLabel(latest.date)})。`;
               }
 
               function showNoData(reason, currentSku, { hideCanvas = true } = {}) {
@@ -904,19 +762,11 @@ export function getStaticPaths() {
                 chartLayout = null;
                 hoverIndex = null;
                 pinnedIndex = null;
-                fullChartData = null;
-                chartData = null;
-                outlierInfo = null;
-                includeOutliers = false;
-                updateOutlierUI();
                 if (summary) {
                   summary.textContent = '';
                 }
                 canvas.style.display = hideCanvas ? 'none' : '';
-                if (msg) {
-                  msg.dataset.state = 'status';
-                  msg.textContent = 'データ少';
-                }
+                msg.textContent = 'データ少';
                 if (reason) {
                   console.warn('showNoData', { reason, sku: currentSku || 'unknown' });
                 }
@@ -1127,9 +977,7 @@ export function getStaticPaths() {
                   niceMin,
                   niceMax,
                 };
-                if (msg && msg.dataset.state !== 'info') {
-                  msg.textContent = '';
-                }
+                msg.textContent = '';
               }
 
               function renderChart(currentSku, attempt = 0) {
@@ -1364,19 +1212,15 @@ export function getStaticPaths() {
                     showNoData(`insufficient data (n=${filtered.length})`, currentSku);
                     return;
                   }
-                  fullChartData = filtered.map(item => ({ date: item.date, price: item.price }));
-                  outlierInfo = analyzeOutliers(fullChartData);
-                  includeOutliers = false;
+                  chartData = filtered;
                   canvas.style.display = '';
-                  if (msg) {
-                    delete msg.dataset.state;
-                    msg.textContent = '';
-                  }
+                  msg.textContent = '';
                   if (chartWrap) {
                     setLoading(false);
                   }
-                  applyDisplayMode();
+                  updateSummary();
                   showDebug(url.toString());
+                  renderChart(currentSku);
                 } catch (err) {
                   console.error(err);
                   const errorMessage = err instanceof Error ? err.message : String(err);
