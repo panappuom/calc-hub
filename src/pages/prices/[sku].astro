@@ -706,7 +706,7 @@ export function getStaticPaths() {
                 const priceText = formatYen(datum.price);
                 tooltip.innerHTML = `
                   <div class="chart-tooltip__date">${dateText}</div>
-                  <div class="chart-tooltip__price">実質 ${priceText}</div>
+                  <div class="chart-tooltip__price">${priceText}</div>
                 `;
                 if (chartWrap && canvas) {
                   const containerRect = chartWrap.getBoundingClientRect();
