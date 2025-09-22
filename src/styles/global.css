@@ -33,6 +33,65 @@
   --notice-warn-bg: #78350f;
   --notice-warn-fg: #fef3c7;
   --effective-highlight: rgba(59, 130, 246, 0.22);
+  --chart-axis: rgba(100, 116, 139, 0.38);
+  --chart-axis: color-mix(in srgb, var(--fg-default) 32%, transparent);
+  --chart-grid: rgba(148, 163, 184, 0.16);
+  --chart-grid: color-mix(in srgb, var(--fg-default) 16%, transparent);
+  --chart-guide: rgba(37, 99, 235, 0.45);
+  --chart-guide: color-mix(in srgb, var(--link-active) 46%, transparent);
+  --chart-today: rgba(37, 99, 235, 0.28);
+  --chart-today: color-mix(in srgb, var(--link) 36%, transparent);
+  --chart-line: var(--link);
+  --chart-marker-fill: var(--bg-default);
+  --chart-marker-stroke: var(--link);
+  --chart-text: var(--fg-muted);
+  --chart-badge-bg: rgba(15, 23, 42, 0.82);
+  --chart-badge-bg: color-mix(in srgb, var(--fg-default) 22%, var(--bg-default) 78%);
+  --chart-badge-fg: var(--badge-fg);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg-default: #f8fafc;
+    --bg-surface: #ffffff;
+    --border-subtle: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --fg-default: #1f2937;
+    --fg-muted: #475569;
+    --fg-strong: #0f172a;
+    --fg-inverted: #ffffff;
+    --link: #2563eb;
+    --link-hover: #1d4ed8;
+    --link-active: #1e40af;
+    --control-bg: #ffffff;
+    --control-bg-hover: #f1f5f9;
+    --control-border: #cbd5e1;
+    --tab-bg: #e2e8f0;
+    --tab-border: #cbd5e1;
+    --card-bg: #ffffff;
+    --badge-fg: #1f2937;
+    --table-header-bg: #e2e8f0;
+    --table-row-alt-bg: rgba(148, 163, 184, 0.12);
+    --notice-warn-bg: #fef3c7;
+    --notice-warn-fg: #92400e;
+    --effective-highlight: rgba(59, 130, 246, 0.18);
+    --chart-axis: rgba(71, 85, 105, 0.35);
+    --chart-axis: color-mix(in srgb, var(--fg-default) 28%, transparent);
+    --chart-grid: rgba(148, 163, 184, 0.24);
+    --chart-grid: color-mix(in srgb, var(--fg-default) 18%, transparent);
+    --chart-guide: rgba(37, 99, 235, 0.35);
+    --chart-guide: color-mix(in srgb, var(--link-active) 40%, transparent);
+    --chart-today: rgba(37, 99, 235, 0.22);
+    --chart-today: color-mix(in srgb, var(--link) 28%, transparent);
+    --chart-line: var(--link);
+    --chart-marker-fill: var(--bg-default);
+    --chart-marker-stroke: var(--link);
+    --chart-text: var(--fg-muted);
+    --chart-badge-bg: rgba(15, 23, 42, 0.08);
+    --chart-badge-bg: color-mix(in srgb, var(--fg-default) 12%, var(--bg-default) 88%);
+    --chart-badge-fg: var(--badge-fg);
+  }
 }
 
 * {

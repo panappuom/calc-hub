@@ -576,6 +576,14 @@ export function getStaticPaths() {
                 return date;
               }
 
+              function isSameDay(left, right) {
+                return (
+                  left.getFullYear() === right.getFullYear()
+                  && left.getMonth() === right.getMonth()
+                  && left.getDate() === right.getDate()
+                );
+              }
+
               function formatDateLabel(value) {
                 const date = parseDate(value);
                 if (!date) return '';
@@ -629,6 +637,32 @@ export function getStaticPaths() {
                 const niceMin = Math.floor(min / step) * step;
                 const niceMax = Math.ceil(max / step) * step;
                 return { min, max, niceMin, niceMax, step };
+              }
+
+              function resolveCssValue(styles, name, fallback, depth = 0) {
+                if (depth > 4) {
+                  return fallback;
+                }
+                const raw = styles.getPropertyValue(name);
+                if (!raw) {
+                  return fallback;
+                }
+                const value = raw.trim();
+                if (!value) {
+                  return fallback;
+                }
+                if (value.startsWith('var(')) {
+                  const match = value.match(/^var\(\s*(--[\w-]+)\s*(?:,\s*(.+))?\)$/);
+                  if (match) {
+                    const [, refName, refFallback] = match;
+                    const nextFallback = refFallback ? refFallback.trim() : fallback;
+                    return resolveCssValue(styles, refName, nextFallback, depth + 1);
+                  }
+                }
+                if (/^color-mix\(/i.test(value)) {
+                  return fallback;
+                }
+                return value;
               }
 
               function drawRoundedRectPath(context, x, y, width, height, radius) {
@@ -746,6 +780,19 @@ export function getStaticPaths() {
               function drawChart(dpr) {
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return;
+                const themeStyles = getComputedStyle(chartWrap || document.documentElement);
+                const colors = {
+                  axis: resolveCssValue(themeStyles, '--chart-axis', 'rgba(100, 116, 139, 0.38)'),
+                  grid: resolveCssValue(themeStyles, '--chart-grid', 'rgba(148, 163, 184, 0.16)'),
+                  guide: resolveCssValue(themeStyles, '--chart-guide', 'rgba(37, 99, 235, 0.45)'),
+                  today: resolveCssValue(themeStyles, '--chart-today', 'rgba(37, 99, 235, 0.28)'),
+                  line: resolveCssValue(themeStyles, '--chart-line', '#2563eb'),
+                  markerFill: resolveCssValue(themeStyles, '--chart-marker-fill', '#0b0d12'),
+                  markerStroke: resolveCssValue(themeStyles, '--chart-marker-stroke', '#2563eb'),
+                  text: resolveCssValue(themeStyles, '--chart-text', 'rgba(226, 232, 240, 0.8)'),
+                  badgeBg: resolveCssValue(themeStyles, '--chart-badge-bg', 'rgba(15, 23, 42, 0.82)'),
+                  badgeFg: resolveCssValue(themeStyles, '--chart-badge-fg', '#f8fafc'),
+                };
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 const padding = {
                   top: Math.round(12 * dpr),
@@ -775,16 +822,19 @@ export function getStaticPaths() {
                 }
                 ctx.save();
                 ctx.lineWidth = Math.max(1, dpr);
-                ctx.strokeStyle = 'rgba(15, 23, 42, 0.24)';
+                ctx.strokeStyle = colors.axis;
                 ctx.beginPath();
                 ctx.moveTo(padding.left, height - padding.bottom);
                 ctx.lineTo(width - padding.right, height - padding.bottom);
                 ctx.moveTo(padding.left, padding.top);
                 ctx.lineTo(padding.left, height - padding.bottom);
                 ctx.stroke();
+                ctx.restore();
 
-                ctx.setLineDash([4 * dpr, 4 * dpr]);
-                ctx.strokeStyle = 'rgba(15, 23, 42, 0.12)';
+                ctx.save();
+                ctx.setLineDash([4 * dpr, 6 * dpr]);
+                ctx.lineWidth = Math.max(1, dpr);
+                ctx.strokeStyle = colors.grid;
                 yTicks.forEach(value => {
                   const y = padding.top + (1 - (value - niceMin) / yRange) * innerHeight;
                   ctx.beginPath();
@@ -792,10 +842,10 @@ export function getStaticPaths() {
                   ctx.lineTo(width - padding.right, y);
                   ctx.stroke();
                 });
-                ctx.setLineDash([]);
+                ctx.restore();
 
                 const fontSize = 12 * dpr;
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+                ctx.fillStyle = colors.text;
                 ctx.font = `${fontSize}px "system-ui", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
                 ctx.textBaseline = 'middle';
                 ctx.textAlign = 'right';
@@ -819,8 +869,30 @@ export function getStaticPaths() {
                   return { x, y, data: datum };
                 });
 
-                ctx.strokeStyle = '#2563eb';
-                ctx.lineWidth = Math.max(2 * dpr, 2);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const todayIndex = points.findIndex(point => {
+                  const pointDate = parseDate(point.data.date);
+                  return pointDate ? isSameDay(pointDate, today) : false;
+                });
+                if (todayIndex >= 0 && points[todayIndex]) {
+                  const todayPoint = points[todayIndex];
+                  ctx.save();
+                  ctx.setLineDash([2 * dpr, 6 * dpr]);
+                  ctx.strokeStyle = colors.today;
+                  ctx.lineWidth = Math.max(1, dpr);
+                  ctx.beginPath();
+                  ctx.moveTo(todayPoint.x, padding.top);
+                  ctx.lineTo(todayPoint.x, height - padding.bottom);
+                  ctx.stroke();
+                  ctx.restore();
+                }
+
+                ctx.save();
+                ctx.strokeStyle = colors.line;
+                ctx.lineWidth = Math.max(1, 2 * dpr);
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
                 ctx.beginPath();
                 points.forEach((point, index) => {
                   if (index === 0) {
@@ -830,33 +902,45 @@ export function getStaticPaths() {
                   }
                 });
                 ctx.stroke();
-
-                ctx.fillStyle = '#2563eb';
-                points.forEach(point => {
-                  ctx.beginPath();
-                  ctx.arc(point.x, point.y, 2.5 * dpr, 0, Math.PI * 2);
-                  ctx.fill();
-                });
+                ctx.restore();
 
                 const activeIndex = getDisplayIndex();
                 if (activeIndex != null && points[activeIndex]) {
                   const activePoint = points[activeIndex];
-                  ctx.strokeStyle = 'rgba(37, 99, 235, 0.4)';
-                  ctx.lineWidth = dpr;
+                  ctx.save();
+                  ctx.setLineDash([3 * dpr, 6 * dpr]);
+                  ctx.strokeStyle = colors.guide;
+                  ctx.lineWidth = Math.max(1, dpr);
                   ctx.beginPath();
                   ctx.moveTo(activePoint.x, padding.top);
                   ctx.lineTo(activePoint.x, height - padding.bottom);
                   ctx.stroke();
-                  ctx.fillStyle = '#fff';
-                  ctx.beginPath();
-                  ctx.arc(activePoint.x, activePoint.y, 5 * dpr, 0, Math.PI * 2);
-                  ctx.fill();
-                  ctx.strokeStyle = '#2563eb';
-                  ctx.lineWidth = 2 * dpr;
-                  ctx.beginPath();
-                  ctx.arc(activePoint.x, activePoint.y, 5 * dpr, 0, Math.PI * 2);
-                  ctx.stroke();
+                  ctx.restore();
                 }
+
+                const markerIndexes = new Set();
+                if (points.length) {
+                  markerIndexes.add(points.length - 1);
+                }
+                if (activeIndex != null && points[activeIndex]) {
+                  markerIndexes.add(activeIndex);
+                }
+                markerIndexes.forEach(index => {
+                  const point = points[index];
+                  if (!point) return;
+                  const isActive = index === activeIndex;
+                  const radius = isActive ? 5 * dpr : 3.5 * dpr;
+                  const strokeWidth = isActive ? Math.max(1.5 * dpr, 1.5) : Math.max(1, dpr);
+                  ctx.save();
+                  ctx.fillStyle = colors.markerFill;
+                  ctx.strokeStyle = colors.markerStroke;
+                  ctx.lineWidth = strokeWidth;
+                  ctx.beginPath();
+                  ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.stroke();
+                  ctx.restore();
+                });
 
                 const lastPoint = points[points.length - 1];
                 if (lastPoint) {
@@ -876,16 +960,15 @@ export function getStaticPaths() {
                   const badgeHeight = 20 * dpr;
                   const badgeX = Math.min(width - padding.right - badgeWidth, lastPoint.x + 8 * dpr);
                   const badgeY = Math.max(padding.top, lastPoint.y - badgeHeight - 8 * dpr);
-                  ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+                  ctx.fillStyle = colors.badgeBg;
                   drawRoundedRectPath(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 6 * dpr);
                   ctx.fill();
-                  ctx.fillStyle = '#fff';
+                  ctx.fillStyle = colors.badgeFg;
                   ctx.textAlign = 'left';
                   ctx.textBaseline = 'middle';
                   ctx.fillText(badgeLabel, badgeX + badgePaddingX, badgeY + badgeHeight / 2);
                 }
 
-                ctx.restore();
                 chartLayout = {
                   padding,
                   innerWidth,
