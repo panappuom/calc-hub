@@ -768,6 +768,41 @@ label {
   margin: 0 auto;
 }
 
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  user-select: none;
+}
+
+.chart-toggle.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.chart-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--chart-badge-bg, rgba(15, 23, 42, 0.82));
+  color: var(--chart-badge-fg, #f8fafc);
+  white-space: nowrap;
+}
+
 .chart-wrap {
   position: relative;
   width: 100%;
