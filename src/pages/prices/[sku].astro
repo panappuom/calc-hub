@@ -439,7 +439,8 @@ export function getStaticPaths() {
             ></canvas>
             <div id="chart-tooltip" class="chart-tooltip" role="presentation" aria-hidden="true"></div>
           </div>
-          <div id="chart-summary" class="sr-only" aria-live="polite"></div>
+          <div class="chart-summary chips" aria-hidden="true" id="chart-summary-visual"></div>
+          <div class="sr-only" id="chart-summary-a11y" aria-live="polite"></div>
           <p id="chart-msg" class="small"></p>
           <pre id="chart-debug" class="small" aria-live="polite"></pre>
           <p class="small jp-copy">過去データはAPI仕様・収集失敗で欠損する場合があります。</p>
@@ -489,7 +490,8 @@ export function getStaticPaths() {
               const msg = document.getElementById('chart-msg');
               const debug = document.getElementById('chart-debug');
               const tooltip = document.getElementById('chart-tooltip');
-              const summary = document.getElementById('chart-summary');
+              const summaryVisual = document.getElementById('chart-summary-visual');
+              const summaryA11y = document.getElementById('chart-summary-a11y');
               const chartWrap = canvas?.closest('.chart-wrap') || null;
               const search = typeof window?.location?.search === 'string'
                 ? window.location.search
@@ -524,7 +526,11 @@ export function getStaticPaths() {
               let pinnedIndex = null;
               let isPointerDown = false;
               const MAX_RENDER_ATTEMPTS = 3;
-              const currencyFormatter = new Intl.NumberFormat('ja-JP');
+              const currencyFormatter = new Intl.NumberFormat('ja-JP', {
+                style: 'currency',
+                currency: 'JPY',
+                maximumFractionDigits: 0,
+              });
 
               function appendDebug(message) {
                 if (!debug || !message) return;
@@ -566,7 +572,7 @@ export function getStaticPaths() {
                 if (!Number.isFinite(num)) {
                   return '';
                 }
-                return `¥${currencyFormatter.format(Math.round(num))}`;
+                return currencyFormatter.format(Math.round(num));
               }
 
               function parseDate(value) {
@@ -588,6 +594,12 @@ export function getStaticPaths() {
                 const date = parseDate(value);
                 if (!date) return '';
                 return `${date.getMonth() + 1}/${date.getDate()}`;
+              }
+
+              function formatSummaryDate(value) {
+                const date = parseDate(value);
+                if (!date) return '';
+                return `${date.getMonth() + 1}/${String(date.getDate()).padStart(2, '0')}`;
               }
 
               function niceNumber(range, round) {
@@ -733,11 +745,17 @@ export function getStaticPaths() {
               }
 
               function updateSummary() {
-                if (!summary) return;
+                if (!summaryVisual && !summaryA11y) return;
                 if (!chartData || chartData.length < 2) {
-                  summary.textContent = '';
+                  if (summaryVisual) {
+                    summaryVisual.innerHTML = '';
+                  }
+                  if (summaryA11y) {
+                    summaryA11y.textContent = 'データが不足しています。';
+                  }
                   return;
                 }
+
                 const total = chartData.reduce((acc, item) => acc + Number(item.price || 0), 0);
                 const avg = total / chartData.length;
                 let minItem = chartData[0];
@@ -747,7 +765,53 @@ export function getStaticPaths() {
                   if (item.price > maxItem.price) maxItem = item;
                 });
                 const latest = chartData[chartData.length - 1];
-                summary.textContent = `${chartData.length}日: 最安${formatYen(minItem.price)}(${formatDateLabel(minItem.date)}), 最高${formatYen(maxItem.price)}(${formatDateLabel(maxItem.date)}), 平均${formatYen(avg)}。最新${formatYen(latest.price)}(${formatDateLabel(latest.date)})。`;
+                const periodStart = formatSummaryDate(chartData[0]?.date);
+                const periodEnd = formatSummaryDate(chartData[chartData.length - 1]?.date);
+                const minDateText = formatSummaryDate(minItem.date);
+                const maxDateText = formatSummaryDate(maxItem.date);
+                if (summaryVisual) {
+                  summaryVisual.innerHTML = '';
+                  let periodChip = '';
+                  if (periodStart && periodEnd) {
+                    periodChip = `期間 ${periodStart}–${periodEnd}`;
+                  } else if (periodStart) {
+                    periodChip = `期間 ${periodStart}`;
+                  } else if (periodEnd) {
+                    periodChip = `期間 ${periodEnd}`;
+                  }
+                  const chipTexts = [
+                    periodChip,
+                    `最安 ${formatYen(minItem.price)}${minDateText ? ` (${minDateText})` : ''}`,
+                    `最高 ${formatYen(maxItem.price)}${maxDateText ? ` (${maxDateText})` : ''}`,
+                    `平均 ${formatYen(avg)}`,
+                    `最新 ${formatYen(latest.price)}`,
+                  ].filter(Boolean);
+                  chipTexts.forEach(text => {
+                    const chip = document.createElement('span');
+                    chip.className = 'chip';
+                    chip.textContent = text;
+                    summaryVisual.appendChild(chip);
+                  });
+                }
+
+                if (summaryA11y) {
+                  const srParts = [];
+                  if (periodStart && periodEnd) {
+                    srParts.push(`期間${periodStart}から${periodEnd}。`);
+                  } else if (periodStart) {
+                    srParts.push(`期間${periodStart}。`);
+                  } else if (periodEnd) {
+                    srParts.push(`期間${periodEnd}。`);
+                  }
+                  const statsParts = [
+                    `最安${formatYen(minItem.price)}${minDateText ? `（${minDateText}）` : ''}`,
+                    `最高${formatYen(maxItem.price)}${maxDateText ? `（${maxDateText}）` : ''}`,
+                    `平均${formatYen(avg)}`,
+                    `最新${formatYen(latest.price)}`,
+                  ];
+                  srParts.push(`${statsParts.join('、')}。`);
+                  summaryA11y.textContent = srParts.join('');
+                }
               }
 
               function showNoData(reason, currentSku, { hideCanvas = true } = {}) {
@@ -762,8 +826,11 @@ export function getStaticPaths() {
                 chartLayout = null;
                 hoverIndex = null;
                 pinnedIndex = null;
-                if (summary) {
-                  summary.textContent = '';
+                if (summaryVisual) {
+                  summaryVisual.innerHTML = '';
+                }
+                if (summaryA11y) {
+                  summaryA11y.textContent = 'データが不足しています。';
                 }
                 canvas.style.display = hideCanvas ? 'none' : '';
                 msg.textContent = 'データ少';
