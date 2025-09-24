@@ -689,8 +689,8 @@ export function getStaticPaths() {
 
               function getBadgeHost(row) {
                 return (
-                  row.querySelector('td[data-cell="store"]') ||
                   row.querySelector('td[data-cell="shop"]') ||
+                  row.querySelector('td[data-cell="store"]') ||
                   row.querySelector('td') ||
                   null
                 );
