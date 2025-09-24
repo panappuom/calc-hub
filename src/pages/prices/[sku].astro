@@ -540,7 +540,16 @@ export function getStaticPaths() {
                     state = false;
                   }
 
-                  const ctx = { section, tbody, toggle, toggleRow, key, state };
+                  const ctx = {
+                    section,
+                    tbody,
+                    toggle,
+                    toggleRow,
+                    key,
+                    state,
+                    observer: null,
+                    mutating: false,
+                  };
 
                   toggle.addEventListener('click', () => {
                     ctx.state = !ctx.state;
@@ -561,11 +570,15 @@ export function getStaticPaths() {
                   });
 
                   const observer = new MutationObserver(() => {
+                    if (ctx.mutating) {
+                      return;
+                    }
                     if (mobileQuery.matches) {
                       applyContext(ctx, true);
                     }
                   });
                   observer.observe(tbody, { childList: true });
+                  ctx.observer = observer;
 
                   return ctx;
                 })
@@ -574,63 +587,80 @@ export function getStaticPaths() {
               if (!contexts.length) return;
 
               function applyContext(ctx, isMobile) {
+                const observer = ctx.observer;
+                if (observer) {
+                  observer.disconnect();
+                }
+
+                ctx.mutating = true;
                 const rows = Array.from(ctx.tbody.querySelectorAll('tr'));
                 const dataRows = rows.filter(row => !row.classList.contains('table-collapse-toggle-row'));
 
-                if (!dataRows.length) {
-                  ctx.toggle.hidden = true;
-                  if (ctx.toggleRow.parentElement) {
-                    ctx.toggleRow.remove();
+                try {
+                  if (!dataRows.length) {
+                    ctx.toggle.hidden = true;
+                    if (ctx.toggleRow.parentElement) {
+                      ctx.toggleRow.remove();
+                    }
+                    return;
                   }
-                  return;
-                }
 
-                const firstDataRow = dataRows[0] || null;
-                const columnCount = firstDataRow?.children?.length || 1;
-                const toggleCell = ctx.toggleRow.firstElementChild;
-                if (toggleCell instanceof HTMLTableCellElement) {
-                  toggleCell.colSpan = columnCount;
-                }
-
-                if (dataRows.length <= 3 || !isMobile) {
-                  ctx.toggle.hidden = true;
-                  ctx.toggle.setAttribute('aria-expanded', 'true');
-                  dataRows.forEach(row => {
-                    row.hidden = false;
-                    row.classList.remove('is-collapsed-row');
-                  });
-                  if (ctx.toggleRow.parentElement) {
-                    ctx.toggleRow.remove();
+                  const firstDataRow = dataRows[0] || null;
+                  const columnCount = firstDataRow?.children?.length || 1;
+                  const toggleCell = ctx.toggleRow.firstElementChild;
+                  if (toggleCell instanceof HTMLTableCellElement) {
+                    toggleCell.colSpan = columnCount;
                   }
-                  return;
-                }
 
-                ctx.toggle.hidden = false;
-                const expanded = Boolean(ctx.state);
-                ctx.toggle.textContent = expanded ? '折りたたむ' : 'すべて表示';
-                ctx.toggle.setAttribute('aria-label', expanded ? '折りたたむ' : 'すべて表示');
-                ctx.toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-                if (!ctx.toggleRow.parentElement) {
-                  ctx.tbody.appendChild(ctx.toggleRow);
-                }
+                  if (dataRows.length <= 3 || !isMobile) {
+                    ctx.toggle.hidden = true;
+                    ctx.toggle.setAttribute('aria-expanded', 'true');
+                    dataRows.forEach(row => {
+                      row.hidden = false;
+                      row.classList.remove('is-collapsed-row');
+                    });
+                    if (ctx.toggleRow.parentElement) {
+                      ctx.toggleRow.remove();
+                    }
+                    return;
+                  }
 
-                if (expanded) {
-                  ctx.tbody.appendChild(ctx.toggleRow);
-                } else {
-                  const insertIndex = Math.min(3, dataRows.length);
-                  const referenceRow = dataRows[insertIndex] || null;
-                  if (referenceRow) {
-                    ctx.tbody.insertBefore(ctx.toggleRow, referenceRow);
-                  } else {
+                  ctx.toggle.hidden = false;
+                  const expanded = Boolean(ctx.state);
+                  ctx.toggle.textContent = expanded ? '折りたたむ' : 'すべて表示';
+                  ctx.toggle.setAttribute('aria-label', expanded ? '折りたたむ' : 'すべて表示');
+                  ctx.toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                  if (ctx.toggleRow.parentElement !== ctx.tbody) {
                     ctx.tbody.appendChild(ctx.toggleRow);
                   }
-                }
 
-                dataRows.forEach((row, index) => {
-                  const visible = expanded || index < 3;
-                  row.hidden = !visible;
-                  row.classList.toggle('is-collapsed-row', !visible);
-                });
+                  if (expanded) {
+                    if (ctx.tbody.lastElementChild !== ctx.toggleRow) {
+                      ctx.tbody.appendChild(ctx.toggleRow);
+                    }
+                  } else {
+                    const insertIndex = Math.min(3, dataRows.length);
+                    const referenceRow = dataRows[insertIndex] || null;
+                    if (referenceRow) {
+                      if (ctx.toggleRow.nextElementSibling !== referenceRow) {
+                        ctx.tbody.insertBefore(ctx.toggleRow, referenceRow);
+                      }
+                    } else if (ctx.tbody.lastElementChild !== ctx.toggleRow) {
+                      ctx.tbody.appendChild(ctx.toggleRow);
+                    }
+                  }
+
+                  dataRows.forEach((row, index) => {
+                    const visible = expanded || index < 3;
+                    row.hidden = !visible;
+                    row.classList.toggle('is-collapsed-row', !visible);
+                  });
+                } finally {
+                  ctx.mutating = false;
+                  if (observer) {
+                    observer.observe(ctx.tbody, { childList: true });
+                  }
+                }
               }
 
               function applyAll() {
