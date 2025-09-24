@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:codex": "PUBLIC_DEPLOY_TARGET=prod npm run build",
     "preview": "astro preview",
+    "preview:codex": "PUBLIC_DEPLOY_TARGET=prod npm run preview",
     "pipeline": "node pipelines/run-all.mjs",
     "test": "echo \"no tests yet\" && exit 0",
     "pretest:a11y": "npm run build && node scripts/prepare-lhci-dist.mjs && node scripts/setup-playwright.mjs",
