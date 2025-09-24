@@ -292,14 +292,14 @@ export function getStaticPaths() {
               <>
                 {hasAllPoints && <button class="sort-toggle">価格順に切替</button>}
                 <table class="price-table">
-                  <thead class="sr-only">
+                  <thead class="sr-only-mobile">
                     <tr>
                       <th id="col-all-store" scope="col">ストア</th>
                       <th id="col-all-shop" scope="col">ショップ</th>
                       <th id="col-all-price" scope="col" data-column="price">価格</th>
                       <th id="col-all-point" scope="col" data-column="points">ポイント</th>
                       <th id="col-all-eff" scope="col" data-column="effective">実質価格<br/><span class="small">（ポイント込み）</span></th>
-                      <th id="col-all-action" scope="col" data-column="action" class="sr-only">ショップで確認</th>
+                      <th id="col-all-action" scope="col" data-column="action" class="sr-only-mobile">ショップで確認</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -367,13 +367,13 @@ export function getStaticPaths() {
               <>
                   {sec.hasPoints && <button class="sort-toggle">価格順に切替</button>}
                   <table class="price-table">
-                    <thead class="sr-only">
+                    <thead class="sr-only-mobile">
                       <tr>
                         <th id={`col-${sec.key}-shop`} scope="col">ショップ</th>
                         <th id={`col-${sec.key}-price`} scope="col" data-column="price">価格</th>
                         <th id={`col-${sec.key}-point`} scope="col" data-column="points">ポイント</th>
                         <th id={`col-${sec.key}-eff`} scope="col" data-column="effective">実質価格<br/><span class="small">（ポイント込み）</span></th>
-                        <th id={`col-${sec.key}-action`} scope="col" data-column="action" class="sr-only">ショップで確認</th>
+                        <th id={`col-${sec.key}-action`} scope="col" data-column="action" class="sr-only-mobile">ショップで確認</th>
                       </tr>
                     </thead>
                     <tbody>
