@@ -179,7 +179,7 @@ export function getStaticPaths() {
     <script is:inline set:html={clientGlobalsScript}></script>
     <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
   </head>
-  <body>
+<body data-sku={sku}>
     <div class="wrap">
         <a href="./" class="small">← トップ</a>
       <h1 set:html={safeBreak(`${skuInfo ? skuInfo.q : sku} – 価格一覧`)}></h1>
@@ -456,6 +456,148 @@ export function getStaticPaths() {
                 });
               });
             });
+          </script>
+          <script>
+            (function () {
+              const sections = Array.from(document.querySelectorAll('.price-section'));
+              if (!sections.length) return;
+
+              const sku = document.body?.dataset?.sku || '';
+              const mobileQuery = window.matchMedia('(max-width: 768px)');
+
+              const storage = (() => {
+                try {
+                  const testKey = '__price_sec_test__';
+                  window.sessionStorage.setItem(testKey, '1');
+                  window.sessionStorage.removeItem(testKey);
+                  return window.sessionStorage;
+                } catch {
+                  return null;
+                }
+              })();
+
+              function getStorageKey(section) {
+                const tab = section?.dataset?.tab || 'all';
+                return sku ? `price-sec:${sku}:${tab}` : `price-sec:${tab}`;
+              }
+
+              function readState(key) {
+                if (!storage || !key) return null;
+                try {
+                  const value = storage.getItem(key);
+                  if (value === '1') return true;
+                  if (value === '0') return false;
+                } catch {}
+                return null;
+              }
+
+              function writeState(key, value) {
+                if (!storage || !key) return;
+                try {
+                  storage.setItem(key, value ? '1' : '0');
+                } catch {}
+              }
+
+              const contexts = sections
+                .map(section => {
+                  const tbody = section.querySelector('tbody');
+                  if (!tbody) return null;
+                  const initialRows = Array.from(tbody.querySelectorAll('tr'));
+                  if (initialRows.length <= 3) return null;
+
+                  const toggle = document.createElement('button');
+                  toggle.type = 'button';
+                  toggle.className = 'table-collapse-toggle';
+                  toggle.textContent = 'すべて表示';
+                  toggle.setAttribute('aria-expanded', 'false');
+                  toggle.hidden = true;
+
+                  const key = getStorageKey(section);
+
+                  const table = section.querySelector('table');
+                  if (table) {
+                    if (!table.id) {
+                      const safeId = `price-table-${(key || '')
+                        .replace(/[^a-z0-9]+/gi, '-')
+                        .replace(/^-+|-+$/g, '') || Math.random().toString(36).slice(2)}`;
+                      table.id = safeId;
+                    }
+                    toggle.setAttribute('aria-controls', table.id);
+                    table.before(toggle);
+                  }
+
+                  let state = readState(key);
+                  if (state == null) {
+                    state = false;
+                  }
+
+                  const ctx = { section, tbody, toggle, key, state };
+
+                  toggle.addEventListener('click', () => {
+                    ctx.state = !ctx.state;
+                    writeState(ctx.key, ctx.state);
+                    applyContext(ctx, mobileQuery.matches);
+                  });
+
+                  const observer = new MutationObserver(() => {
+                    if (mobileQuery.matches) {
+                      applyContext(ctx, true);
+                    }
+                  });
+                  observer.observe(tbody, { childList: true });
+
+                  return ctx;
+                })
+                .filter(Boolean);
+
+              if (!contexts.length) return;
+
+              function applyContext(ctx, isMobile) {
+                const rows = Array.from(ctx.tbody.querySelectorAll('tr'));
+                if (!rows.length) {
+                  ctx.toggle.hidden = true;
+                  return;
+                }
+
+                if (rows.length <= 3 || !isMobile) {
+                  ctx.toggle.hidden = true;
+                  rows.forEach(row => {
+                    row.hidden = false;
+                    row.classList.remove('is-collapsed-row');
+                  });
+                  return;
+                }
+
+                ctx.toggle.hidden = false;
+                const expanded = Boolean(ctx.state);
+                ctx.toggle.textContent = expanded ? '折りたたむ' : 'すべて表示';
+                ctx.toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                rows.forEach((row, index) => {
+                  const visible = expanded || index < 3;
+                  row.hidden = !visible;
+                  row.classList.toggle('is-collapsed-row', !visible);
+                });
+              }
+
+              function applyAll() {
+                const isMobile = mobileQuery.matches;
+                contexts.forEach(ctx => {
+                  const stored = readState(ctx.key);
+                  if (stored != null) {
+                    ctx.state = stored;
+                  }
+                  applyContext(ctx, isMobile);
+                });
+              }
+
+              if (typeof mobileQuery.addEventListener === 'function') {
+                mobileQuery.addEventListener('change', applyAll);
+              } else if (typeof mobileQuery.addListener === 'function') {
+                mobileQuery.addListener(applyAll);
+              }
+              window.addEventListener('pageshow', applyAll);
+              applyAll();
+            })();
           </script>
           <script>
             document.querySelectorAll('.price-section').forEach(sec => {
