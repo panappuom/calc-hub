@@ -1023,29 +1023,19 @@ export function getStaticPaths() {
                 const cssWidth = canvas.clientWidth || canvas.width / dpr;
                 const isCompactWidth = cssWidth < 420;
                 const desiredXTicks = isCompactWidth ? 4 : 6;
-                const minLabelGap = (isCompactWidth ? 56 : 72) * dpr;
+                const minLabelGapCss = isCompactWidth ? 56 : 72;
+                const labelPaddingCss = 4;
                 const fontSize = 12 * dpr;
                 ctx.fillStyle = colors.text;
                 ctx.font = `${fontSize}px "system-ui", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
 
-                const formatTickLabel = (date, nextPlaced) => {
-                  if (!date) return '';
-                  if (!isCompactWidth) {
-                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                  }
-                  if (!nextPlaced) {
-                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                  }
-                  const sameMonth =
-                    date.getFullYear() === nextPlaced.year && date.getMonth() === nextPlaced.month;
-                  if (sameMonth) {
-                    return String(date.getDate());
-                  }
-                  return ` ${date.getMonth() + 1}/${date.getDate()}`;
-                };
+                const formatMonthDay = date => `${date.getMonth() + 1}/${date.getDate()}`;
+                const formatDay = date => String(date.getDate());
+                const isSameMonth = (a, b) =>
+                  Boolean(a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth());
 
                 const lastDatum = chartData[chartData.length - 1];
-                let avoidRight = 0;
+                let badgeAvoidRightCss = 0;
                 if (lastDatum) {
                   const lastDate = parseDate(lastDatum.date);
                   const now = new Date();
@@ -1055,13 +1045,44 @@ export function getStaticPaths() {
                     && now.getMonth() === lastDate.getMonth()
                     && now.getDate() === lastDate.getDate();
                   const badgeLabel = `${isToday ? '本日' : '最新'} ${formatYen(lastDatum.price)}`;
-                  const badgeWidth = ctx.measureText(badgeLabel).width;
-                  const markerRadius = 5 * dpr;
-                  avoidRight = badgeWidth + 8 * dpr + markerRadius;
+                  const badgeWidthCss = ctx.measureText(badgeLabel).width / dpr;
+                  const markerRadiusCss = 5;
+                  badgeAvoidRightCss = Math.max(0, badgeWidthCss + 8 + markerRadiusCss);
                 }
 
                 const plotLeft = padding.left;
-                const plotRight = Math.max(plotLeft, width - padding.right - avoidRight);
+                const plotRight = Math.max(plotLeft, width - padding.right);
+                const plotLeftCss = plotLeft / dpr;
+                const plotRightCss = plotRight / dpr;
+                const innerPlotRightCss = Math.max(plotLeftCss, plotRightCss - badgeAvoidRightCss);
+
+                const indexToCssX = index => {
+                  const ratio = chartData.length > 1 ? index / (chartData.length - 1) : 0;
+                  const x = padding.left + ratio * innerWidth;
+                  return x / dpr;
+                };
+
+                const labels = [];
+                const firstIndex = 0;
+                const lastIndex = chartData.length - 1;
+                const firstDate = chartData.length ? parseDate(chartData[firstIndex].date) : null;
+                const lastDate = chartData.length ? parseDate(chartData[lastIndex].date) : null;
+                if (firstDate) {
+                  labels.push({
+                    index: firstIndex,
+                    xCss: indexToCssX(firstIndex),
+                    text: formatMonthDay(firstDate),
+                    date: firstDate,
+                  });
+                }
+                if (lastDate && lastIndex !== firstIndex) {
+                  labels.push({
+                    index: lastIndex,
+                    xCss: indexToCssX(lastIndex),
+                    text: formatMonthDay(lastDate),
+                    date: lastDate,
+                  });
+                }
 
                 const candidateCount = Math.min(chartData.length, Math.max(desiredXTicks + 1, 2));
                 const candidateIndexes = new Set();
@@ -1070,70 +1091,75 @@ export function getStaticPaths() {
                   const index = Math.round(ratio * (chartData.length - 1));
                   candidateIndexes.add(Math.min(chartData.length - 1, Math.max(0, index)));
                 }
-                candidateIndexes.add(chartData.length - 1);
-                candidateIndexes.add(0);
 
-                const greedyTicks = [];
-                let lastPlacedX = Number.POSITIVE_INFINITY;
-                let nextPlacedMeta = null;
-                Array.from(candidateIndexes)
+                const innerCandidates = Array.from(candidateIndexes).filter(
+                  index => index !== firstIndex && index !== lastIndex,
+                );
+
+                const rightmostLabel = labels.reduce((acc, label) => {
+                  if (!label) return acc;
+                  if (!acc || label.xCss > acc.xCss) {
+                    return label;
+                  }
+                  return acc;
+                }, null);
+                let lastPlacedXCss = rightmostLabel ? rightmostLabel.xCss : Number.POSITIVE_INFINITY;
+                let nextPlacedDate = rightmostLabel ? rightmostLabel.date : null;
+                if (!rightmostLabel || rightmostLabel.index !== lastIndex) {
+                  lastPlacedXCss = Number.POSITIVE_INFINITY;
+                  nextPlacedDate = null;
+                }
+                innerCandidates
                   .sort((a, b) => b - a)
                   .forEach(index => {
-                    const ratio = chartData.length > 1 ? index / (chartData.length - 1) : 0;
-                    const x = padding.left + ratio * innerWidth;
-                    const date = parseDate(chartData[index].date);
-                    const label = formatTickLabel(date, nextPlacedMeta);
-                    if (!label) {
+                    const candidate = chartData[index];
+                    if (!candidate) {
                       return;
                     }
-                    const textWidth = ctx.measureText(label).width;
-                    if (textWidth === 0) {
+                    const date = parseDate(candidate.date);
+                    if (!date) {
                       return;
                     }
-                    if (x - textWidth / 2 < plotLeft) {
+                    const xCss = indexToCssX(index);
+                    if (xCss < plotLeftCss || xCss > plotRightCss) {
                       return;
                     }
-                    if (x + textWidth / 2 > plotRight) {
+                    if (xCss > innerPlotRightCss) {
                       return;
                     }
-                    if (lastPlacedX - x < minLabelGap) {
+                    const text =
+                      nextPlacedDate && isSameMonth(date, nextPlacedDate)
+                        ? formatDay(date)
+                        : formatMonthDay(date);
+                    const textWidthCss = ctx.measureText(text).width / dpr;
+                    if (textWidthCss <= 0) {
                       return;
                     }
-                    greedyTicks.push({
-                      index,
-                      x,
-                      label,
-                    });
-                    lastPlacedX = x;
-                    if (date) {
-                      nextPlacedMeta = { month: date.getMonth(), year: date.getFullYear() };
-                    } else {
-                      nextPlacedMeta = null;
+                    const minGap = Math.max(minLabelGapCss, textWidthCss / 2 + labelPaddingCss);
+                    if (lastPlacedXCss - xCss < minGap) {
+                      return;
                     }
+                    labels.push({ index, xCss, text, date });
+                    lastPlacedXCss = xCss;
+                    nextPlacedDate = date;
                   });
 
-                if (!greedyTicks.length && chartData.length) {
-                  const fallbackIndex = chartData.length - 1;
-                  const fallbackRatio = chartData.length > 1 ? fallbackIndex / (chartData.length - 1) : 0;
-                  const fallbackX = padding.left + fallbackRatio * innerWidth;
-                  const fallbackDate = parseDate(chartData[fallbackIndex].date);
-                  const fallbackLabel = formatTickLabel(fallbackDate, null);
-                  const fallbackWidth = ctx.measureText(fallbackLabel).width;
-                  if (
-                    fallbackLabel
-                    && fallbackWidth > 0
-                    && fallbackX - fallbackWidth / 2 >= plotLeft
-                    && fallbackX + fallbackWidth / 2 <= plotRight
-                  ) {
-                    greedyTicks.push({
-                      index: fallbackIndex,
-                      x: fallbackX,
-                      label: fallbackLabel,
-                    });
+                labels.sort((a, b) => a.xCss - b.xCss);
+                if (labels.length) {
+                  const firstLabel = labels[0];
+                  const firstWidthCss = ctx.measureText(firstLabel.text).width / dpr;
+                  if (firstLabel.xCss - firstWidthCss / 2 < plotLeftCss) {
+                    firstLabel.drawOffsetCss = plotLeftCss + firstWidthCss / 2 - firstLabel.xCss;
                   }
                 }
 
-                const xTicks = greedyTicks.sort((a, b) => a.index - b.index);
+                const xTicks = labels
+                  .sort((a, b) => a.index - b.index)
+                  .map(label => ({
+                    index: label.index,
+                    x: (label.xCss + (label.drawOffsetCss || 0)) * dpr,
+                    label: label.text,
+                  }));
                 ctx.save();
                 ctx.lineWidth = Math.max(1, dpr);
                 ctx.strokeStyle = colors.axis;
