@@ -878,15 +878,120 @@ export function getStaticPaths() {
                 for (let value = niceMin; value <= niceMax + step / 2; value += step) {
                   yTicks.push(value);
                 }
-                const xTicks = [];
-                const desiredXTicks = 6;
-                const stepCount = Math.max(1, Math.ceil((chartData.length - 1) / Math.max(1, desiredXTicks - 1)));
-                for (let i = 0; i < chartData.length; i += stepCount) {
-                  xTicks.push(i);
+                const cssWidth = canvas.clientWidth || canvas.width / dpr;
+                const isCompactWidth = cssWidth < 420;
+                const desiredXTicks = isCompactWidth ? 4 : 6;
+                const minLabelGap = (isCompactWidth ? 56 : 72) * dpr;
+                const fontSize = 12 * dpr;
+                ctx.fillStyle = colors.text;
+                ctx.font = `${fontSize}px "system-ui", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+
+                const formatTickLabel = (date, nextPlaced) => {
+                  if (!date) return '';
+                  if (!isCompactWidth) {
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                  }
+                  if (!nextPlaced) {
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                  }
+                  const sameMonth =
+                    date.getFullYear() === nextPlaced.year && date.getMonth() === nextPlaced.month;
+                  if (sameMonth) {
+                    return String(date.getDate());
+                  }
+                  return ` ${date.getMonth() + 1}/${date.getDate()}`;
+                };
+
+                const lastDatum = chartData[chartData.length - 1];
+                let avoidRight = 0;
+                if (lastDatum) {
+                  const lastDate = parseDate(lastDatum.date);
+                  const now = new Date();
+                  const isToday =
+                    lastDate
+                    && now.getFullYear() === lastDate.getFullYear()
+                    && now.getMonth() === lastDate.getMonth()
+                    && now.getDate() === lastDate.getDate();
+                  const badgeLabel = `${isToday ? '本日' : '最新'} ${formatYen(lastDatum.price)}`;
+                  const badgeWidth = ctx.measureText(badgeLabel).width;
+                  const markerRadius = 5 * dpr;
+                  avoidRight = badgeWidth + 8 * dpr + markerRadius;
                 }
-                if (xTicks[xTicks.length - 1] !== chartData.length - 1) {
-                  xTicks.push(chartData.length - 1);
+
+                const plotLeft = padding.left;
+                const plotRight = Math.max(plotLeft, width - padding.right - avoidRight);
+
+                const candidateCount = Math.min(chartData.length, Math.max(desiredXTicks + 1, 2));
+                const candidateIndexes = new Set();
+                for (let i = 0; i < candidateCount; i += 1) {
+                  const ratio = candidateCount > 1 ? i / (candidateCount - 1) : 0;
+                  const index = Math.round(ratio * (chartData.length - 1));
+                  candidateIndexes.add(Math.min(chartData.length - 1, Math.max(0, index)));
                 }
+                candidateIndexes.add(chartData.length - 1);
+                candidateIndexes.add(0);
+
+                const greedyTicks = [];
+                let lastPlacedX = Number.POSITIVE_INFINITY;
+                let nextPlacedMeta = null;
+                Array.from(candidateIndexes)
+                  .sort((a, b) => b - a)
+                  .forEach(index => {
+                    const ratio = chartData.length > 1 ? index / (chartData.length - 1) : 0;
+                    const x = padding.left + ratio * innerWidth;
+                    const date = parseDate(chartData[index].date);
+                    const label = formatTickLabel(date, nextPlacedMeta);
+                    if (!label) {
+                      return;
+                    }
+                    const textWidth = ctx.measureText(label).width;
+                    if (textWidth === 0) {
+                      return;
+                    }
+                    if (x - textWidth / 2 < plotLeft) {
+                      return;
+                    }
+                    if (x + textWidth / 2 > plotRight) {
+                      return;
+                    }
+                    if (lastPlacedX - x < minLabelGap) {
+                      return;
+                    }
+                    greedyTicks.push({
+                      index,
+                      x,
+                      label,
+                    });
+                    lastPlacedX = x;
+                    if (date) {
+                      nextPlacedMeta = { month: date.getMonth(), year: date.getFullYear() };
+                    } else {
+                      nextPlacedMeta = null;
+                    }
+                  });
+
+                if (!greedyTicks.length && chartData.length) {
+                  const fallbackIndex = chartData.length - 1;
+                  const fallbackRatio = chartData.length > 1 ? fallbackIndex / (chartData.length - 1) : 0;
+                  const fallbackX = padding.left + fallbackRatio * innerWidth;
+                  const fallbackDate = parseDate(chartData[fallbackIndex].date);
+                  const fallbackLabel = formatTickLabel(fallbackDate, null);
+                  const fallbackWidth = ctx.measureText(fallbackLabel).width;
+                  if (
+                    fallbackLabel
+                    && fallbackWidth > 0
+                    && fallbackX - fallbackWidth / 2 >= plotLeft
+                    && fallbackX + fallbackWidth / 2 <= plotRight
+                  ) {
+                    greedyTicks.push({
+                      index: fallbackIndex,
+                      x: fallbackX,
+                      label: fallbackLabel,
+                    });
+                  }
+                }
+
+                const xTicks = greedyTicks.sort((a, b) => a.index - b.index);
                 ctx.save();
                 ctx.lineWidth = Math.max(1, dpr);
                 ctx.strokeStyle = colors.axis;
@@ -911,9 +1016,6 @@ export function getStaticPaths() {
                 });
                 ctx.restore();
 
-                const fontSize = 12 * dpr;
-                ctx.fillStyle = colors.text;
-                ctx.font = `${fontSize}px "system-ui", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
                 ctx.textBaseline = 'middle';
                 ctx.textAlign = 'right';
                 yTicks.forEach(value => {
@@ -923,10 +1025,8 @@ export function getStaticPaths() {
 
                 ctx.textBaseline = 'top';
                 ctx.textAlign = 'center';
-                xTicks.forEach(index => {
-                  const ratio = chartData.length > 1 ? index / (chartData.length - 1) : 0;
-                  const x = padding.left + ratio * innerWidth;
-                  ctx.fillText(formatDateLabel(chartData[index].date), x, height - padding.bottom + 8 * dpr);
+                xTicks.forEach(tick => {
+                  ctx.fillText(tick.label, tick.x, height - padding.bottom + 8 * dpr);
                 });
 
                 const points = chartData.map((datum, index) => {
