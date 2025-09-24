@@ -542,6 +542,46 @@ label {
   border-color: rgba(19, 78, 74, 0.4);
 }
 
+.rank-badge {
+  --rank-badge-accent: color-mix(in srgb, var(--fg-default) 40%, transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 2px 10px 2px 8px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--fg-default) 16%, var(--bg-default) 84%);
+  color: var(--fg-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  border: 1px solid color-mix(in srgb, var(--fg-default) 28%, transparent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rank-badge::before {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 9999px;
+  background: var(--rank-badge-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-default) 40%, transparent);
+}
+
+.rank-badge--1 {
+  --rank-badge-accent: #fbbf24;
+}
+
+.rank-badge--2 {
+  --rank-badge-accent: #94a3b8;
+}
+
+.rank-badge--3 {
+  --rank-badge-accent: #f97316;
+}
+
 .price-table {
   width: 100%;
   border-collapse: collapse;
@@ -609,6 +649,11 @@ label {
 .price-table td[data-cell="store"] {
   white-space: nowrap;
   width: 1%;
+}
+
+.price-table td[data-cell="store"] .rank-badge,
+.price-table td[data-cell="shop"] .rank-badge {
+  margin-right: 8px;
 }
 
 .price-table .shop-name {
@@ -732,6 +777,12 @@ label {
     align-items: start;
   }
 
+  .price-table td[data-cell="shop"] .rank-badge {
+    grid-column: 1 / -1;
+    justify-self: flex-start;
+    margin-right: 0;
+  }
+
   .price-table td[data-cell="shop"]::before {
     margin: 0;
     align-self: start;
@@ -746,8 +797,10 @@ label {
   .price-table td[data-cell="store"] {
     position: static;
     display: flex;
+    flex-direction: column;
     justify-content: flex-start;
-    align-items: center;
+    align-items: flex-start;
+    gap: 6px;
     padding: 0;
     margin-bottom: 4px;
     width: 100%;
@@ -756,6 +809,10 @@ label {
   .price-table td[data-cell="store"]::before {
     content: "";
     display: none;
+  }
+
+  .price-table td[data-cell="store"] .rank-badge {
+    margin-right: 0;
   }
 
   .price-table td[data-cell="store"] .store-badge {
