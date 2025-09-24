@@ -457,6 +457,14 @@ label {
   font-weight: 600;
 }
 
+.table-collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+}
+
 .sort-toggle:hover,
 .sort-toggle:focus-visible,
 .table-collapse-toggle:hover,
@@ -652,6 +660,13 @@ label {
     position: relative;
   }
 
+  .price-table tbody tr.table-collapse-toggle-row {
+    display: block;
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
   .price-table tbody tr[hidden],
   .price-table tbody tr.is-collapsed-row {
     display: none !important;
@@ -674,6 +689,14 @@ label {
     gap: 8px;
   }
 
+  .price-table tr.table-collapse-toggle-row td {
+    padding: 0;
+  }
+
+  .price-table tr.table-collapse-toggle-row .table-collapse-toggle {
+    margin: 0;
+  }
+
   .price-table td[data-cell="effective"] {
     background: var(--effective-highlight);
     color: var(--fg-strong);
@@ -691,6 +714,10 @@ label {
     font-weight: 600;
     opacity: 0.7;
     margin-right: 8px;
+  }
+
+  .price-table tr.table-collapse-toggle-row td::before {
+    display: none;
   }
 
   .price-table td[data-cell="effective"]::before {

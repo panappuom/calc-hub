@@ -509,8 +509,18 @@ export function getStaticPaths() {
                   toggle.type = 'button';
                   toggle.className = 'table-collapse-toggle';
                   toggle.textContent = 'すべて表示';
+                  toggle.setAttribute('role', 'button');
+                  toggle.setAttribute('aria-label', 'すべて表示');
                   toggle.setAttribute('aria-expanded', 'false');
                   toggle.hidden = true;
+
+                  const toggleRow = document.createElement('tr');
+                  toggleRow.className = 'table-collapse-toggle-row';
+                  const toggleCell = document.createElement('td');
+                  toggleCell.colSpan = initialRows[0]?.children?.length || 1;
+                  toggleCell.appendChild(toggle);
+                  toggleCell.setAttribute('data-label', '');
+                  toggleRow.appendChild(toggleCell);
 
                   const key = getStorageKey(section);
 
@@ -523,7 +533,6 @@ export function getStaticPaths() {
                       table.id = safeId;
                     }
                     toggle.setAttribute('aria-controls', table.id);
-                    table.before(toggle);
                   }
 
                   let state = readState(key);
@@ -531,12 +540,24 @@ export function getStaticPaths() {
                     state = false;
                   }
 
-                  const ctx = { section, tbody, toggle, key, state };
+                  const ctx = { section, tbody, toggle, toggleRow, key, state };
 
                   toggle.addEventListener('click', () => {
                     ctx.state = !ctx.state;
                     writeState(ctx.key, ctx.state);
                     applyContext(ctx, mobileQuery.matches);
+
+                    if (!mobileQuery.matches) {
+                      return;
+                    }
+
+                    const prefersReducedMotion = window.matchMedia(
+                      '(prefers-reduced-motion: reduce)'
+                    );
+                    const behavior = prefersReducedMotion?.matches ? 'auto' : 'smooth';
+                    requestAnimationFrame(() => {
+                      ctx.toggle.scrollIntoView({ behavior, block: 'center' });
+                    });
                   });
 
                   const observer = new MutationObserver(() => {
@@ -554,25 +575,58 @@ export function getStaticPaths() {
 
               function applyContext(ctx, isMobile) {
                 const rows = Array.from(ctx.tbody.querySelectorAll('tr'));
-                if (!rows.length) {
+                const dataRows = rows.filter(row => !row.classList.contains('table-collapse-toggle-row'));
+
+                if (!dataRows.length) {
                   ctx.toggle.hidden = true;
+                  if (ctx.toggleRow.parentElement) {
+                    ctx.toggleRow.remove();
+                  }
                   return;
                 }
 
-                if (rows.length <= 3 || !isMobile) {
+                const firstDataRow = dataRows[0] || null;
+                const columnCount = firstDataRow?.children?.length || 1;
+                const toggleCell = ctx.toggleRow.firstElementChild;
+                if (toggleCell instanceof HTMLTableCellElement) {
+                  toggleCell.colSpan = columnCount;
+                }
+
+                if (dataRows.length <= 3 || !isMobile) {
                   ctx.toggle.hidden = true;
-                  rows.forEach(row => {
+                  ctx.toggle.setAttribute('aria-expanded', 'true');
+                  dataRows.forEach(row => {
                     row.hidden = false;
                     row.classList.remove('is-collapsed-row');
                   });
+                  if (ctx.toggleRow.parentElement) {
+                    ctx.toggleRow.remove();
+                  }
                   return;
                 }
 
                 ctx.toggle.hidden = false;
                 const expanded = Boolean(ctx.state);
                 ctx.toggle.textContent = expanded ? '折りたたむ' : 'すべて表示';
+                ctx.toggle.setAttribute('aria-label', expanded ? '折りたたむ' : 'すべて表示');
                 ctx.toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-                rows.forEach((row, index) => {
+                if (!ctx.toggleRow.parentElement) {
+                  ctx.tbody.appendChild(ctx.toggleRow);
+                }
+
+                if (expanded) {
+                  ctx.tbody.appendChild(ctx.toggleRow);
+                } else {
+                  const insertIndex = Math.min(3, dataRows.length);
+                  const referenceRow = dataRows[insertIndex] || null;
+                  if (referenceRow) {
+                    ctx.tbody.insertBefore(ctx.toggleRow, referenceRow);
+                  } else {
+                    ctx.tbody.appendChild(ctx.toggleRow);
+                  }
+                }
+
+                dataRows.forEach((row, index) => {
                   const visible = expanded || index < 3;
                   row.hidden = !visible;
                   row.classList.toggle('is-collapsed-row', !visible);
