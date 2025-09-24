@@ -637,6 +637,11 @@ label {
     position: relative;
   }
 
+  .price-table tbody tr[hidden],
+  .price-table tbody tr.is-collapsed-row {
+    display: none !important;
+  }
+
   .price-table tbody tr:nth-child(even) {
     background: var(--card-bg);
   }
