@@ -841,9 +841,10 @@ label {
   .price-table td[data-cell="store"] {
     position: static;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     justify-content: flex-start;
-    align-items: flex-start;
+    align-items: center;
     gap: 6px;
     padding: 0;
     margin-bottom: 4px;
