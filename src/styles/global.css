@@ -502,21 +502,16 @@ label {
   width: 100%;
 }
 
-.list-cta[hidden] {
-  display: none !important;
+.list-cta button[data-cta='collapse'] {
+  display: none;
 }
 
-.list-cta--bottom {
-  margin-top: 12px;
+.list-cta.is-expanded button[data-cta='expand'] {
+  display: none;
 }
 
-.store-list {
-  overflow-anchor: none;
-}
-
-.list-anchor {
-  display: block;
-  height: 0;
+.list-cta.is-expanded button[data-cta='collapse'] {
+  display: inline-flex;
 }
 
 .table-collapse-toggle {
@@ -785,14 +780,6 @@ label {
     border: 0;
   }
 
-  .price-table tbody tr.table-anchor-row {
-    display: block;
-    padding: 0;
-    background: transparent;
-    border: 0;
-    height: 0;
-  }
-
   .price-table tbody tr[hidden],
   .price-table tbody tr.is-collapsed-row {
     display: none !important;
@@ -819,12 +806,6 @@ label {
     padding: 0;
   }
 
-  .price-table tr.table-anchor-row td {
-    padding: 0;
-    border: 0;
-    height: 0;
-  }
-
   .price-table tr.table-collapse-toggle-row .table-collapse-toggle {
     margin: 0;
   }
@@ -849,10 +830,6 @@ label {
   }
 
   .price-table tr.table-collapse-toggle-row td::before {
-    display: none;
-  }
-
-  .price-table tr.table-anchor-row td::before {
     display: none;
   }
 
