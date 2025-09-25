@@ -62,6 +62,38 @@ function withEffectivePrice(it) {
   };
 }
 
+function normalizeShopName(name) {
+  if (typeof name !== 'string') return '';
+  return name
+    .toLowerCase()
+    .replace(/[(（][^)）]*[)）]/g, '')
+    .replace(/\s+/g, '')
+    .replace(/[【】\[\]]/g, '')
+    .replace(/店$/g, '')
+    .trim();
+}
+
+function equalsByPriceShop(a, b) {
+  if (!a || !b) return false;
+  const priceA = Number(a.price);
+  const priceB = Number(b.price);
+  if (!Number.isFinite(priceA) || !Number.isFinite(priceB)) {
+    return false;
+  }
+  const samePrice = priceA === priceB;
+  if (!samePrice) {
+    return false;
+  }
+  const shopIdA = a.shopId != null ? String(a.shopId) : '';
+  const shopIdB = b.shopId != null ? String(b.shopId) : '';
+  if (shopIdA && shopIdB) {
+    return shopIdA === shopIdB;
+  }
+  const shopNameA = normalizeShopName(a.shopName);
+  const shopNameB = normalizeShopName(b.shopName);
+  return Boolean(shopNameA) && shopNameA === shopNameB;
+}
+
 const list = priceInfo?.list ? priceInfo.list.map(withEffectivePrice).sort((a, b) => a.effective - b.effective) : [];
 const rakutenSource = rakutenData?.items?.find(i => i.skuId === sku)?.list ?? [];
 const yahooSource = yahooData?.items?.find(i => i.skuId === sku)?.list ?? [];
@@ -84,6 +116,9 @@ const bestToday = allList.length
   ? allList[0]
   : (list.length ? list.reduce((min, it) => (it.effective < min.effective ? it : min), list[0]) : null);
 let bestRecommended = priceInfo?.bestRecommended ?? null;
+let bestRecommendedEvidence = typeof priceInfo?.bestRecommendedEvidence === 'string'
+  ? priceInfo.bestRecommendedEvidence
+  : null;
 if (!bestRecommended && list.length && skuInfo?.brandHints?.length) {
   const cand = list.filter(it => {
     const title = it.title?.toLowerCase() ?? '';
@@ -91,13 +126,52 @@ if (!bestRecommended && list.length && skuInfo?.brandHints?.length) {
   });
   if (cand.length) {
     bestRecommended = cand.reduce((min, it) => (it.effective < min.effective ? it : min), cand[0]);
+    bestRecommendedEvidence = 'ブランド一致OK';
   }
 }
 if (bestRecommended) {
   bestRecommended = { ...bestRecommended, effective: Number.isFinite(bestRecommended.effective) ? bestRecommended.effective : getEffectivePriceValue(bestRecommended) };
+  if (!bestRecommendedEvidence) {
+    const candEvidence =
+      typeof bestRecommended.reason === 'string'
+        ? bestRecommended.reason
+        : typeof bestRecommended.note === 'string'
+          ? bestRecommended.note
+          : null;
+    if (candEvidence) {
+      bestRecommendedEvidence = candEvidence;
+    }
+  }
 }
 const bestTodayCard = getPriceCardModel(bestToday, { prefix: '最安' });
 const bestRecommendedCard = getPriceCardModel(bestRecommended, { prefix: '推奨' });
+
+const hasRecommendedSection = Boolean(skuInfo?.brandHints?.length);
+const bestTodayPriceValue = Number(bestToday?.price);
+const bestRecommendedPriceValue = Number(bestRecommended?.price);
+const isSamePrice =
+  Number.isFinite(bestTodayPriceValue) &&
+  Number.isFinite(bestRecommendedPriceValue) &&
+  bestTodayPriceValue === bestRecommendedPriceValue;
+const isSameOffer = bestToday && bestRecommended ? equalsByPriceShop(bestToday, bestRecommended) : false;
+const bestPriceCase = hasRecommendedSection && bestTodayCard && bestRecommendedCard && isSamePrice
+  ? (isSameOffer ? 'merge' : 'tie')
+  : 'separate';
+const tieSourceList = allList.length ? allList : list;
+const tieCount = Number.isFinite(bestTodayPriceValue)
+  ? tieSourceList.filter(it => Number(it.price) === bestTodayPriceValue).length
+  : 0;
+const shouldShowTieLink = bestPriceCase === 'tie' && tieCount > 1;
+const showRecommendedCard = hasRecommendedSection && bestPriceCase === 'separate';
+
+const bestPriceContext = {
+  case: bestPriceCase,
+  sku,
+  price: Number.isFinite(bestTodayPriceValue) ? bestTodayPriceValue : null,
+  shopId: bestToday?.shopId ?? null,
+  tieCount,
+};
+const bestPriceContextScript = JSON.stringify(bestPriceContext);
 function formatCurrency(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return '';
@@ -202,9 +276,12 @@ export function getStaticPaths() {
         <>
           <div class="best-price">
             <h2 set:html={safeBreak("最安情報")}></h2>
-            <div class="best-price-cards">
+            <div class="best-price-cards" data-bestprice-case={bestPriceCase}>
               <section class="best-price-card" role="region" aria-labelledby="best-today-heading">
                 <p class="best-price-card__label" id="best-today-heading">今日の最安</p>
+                {bestPriceCase === 'merge' && (
+                  <span class="best-price-card__badge" aria-label="推奨最安と同一のため統合表示">推奨最安と一致</span>
+                )}
                 {bestTodayCard ? (
                   <>
                     <p class="best-price-card__line best-price-card__line--primary">
@@ -235,12 +312,27 @@ export function getStaticPaths() {
                         </a>
                       </p>
                     )}
+                    {bestPriceCase === 'merge' && bestRecommendedEvidence && (
+                      <p class="best-price-card__note">{bestRecommendedEvidence}</p>
+                    )}
+                    {shouldShowTieLink && (
+                      <p class="best-price-card__note best-price-card__note--link">
+                        <a
+                          href="#price-table-all"
+                          class="best-price-card__tie-link"
+                          data-bestprice-tie-trigger
+                          data-bestprice-tie-price={String(bestTodayPriceValue)}
+                        >
+                          同額 {tieCount} 件を見る
+                        </a>
+                      </p>
+                    )}
                   </>
                 ) : (
                   <p class="best-price-card__line best-price-card__line--empty">データ少</p>
                 )}
               </section>
-              {skuInfo?.brandHints?.length ? (
+              {showRecommendedCard ? (
                 <section class="best-price-card" role="region" aria-labelledby="best-recommended-heading">
                   <p class="best-price-card__label" id="best-recommended-heading">推奨最安（ブランド一致）</p>
                   {bestRecommendedCard ? (
@@ -281,6 +373,89 @@ export function getStaticPaths() {
               ) : null}
             </div>
           </div>
+          <script is:inline set:html={`(function(){
+  const context = ${bestPriceContextScript};
+  if (!context || typeof window === 'undefined') return;
+
+  function dispatchAnalytics(name, detail) {
+    if (!name) return;
+    try {
+      window.dispatchEvent(new CustomEvent(name, { detail }));
+    } catch (error) {
+      console.warn('bestprice analytics dispatch failed', { name, error });
+    }
+    const dataLayer = window.dataLayer;
+    if (Array.isArray(dataLayer)) {
+      try {
+        dataLayer.push({ event: name, detail });
+      } catch (error) {
+        console.warn('bestprice analytics dataLayer push failed', { name, error });
+      }
+    }
+  }
+
+  if (context.case === 'merge' && context.price != null) {
+    dispatchAnalytics('bestprice_merge', {
+      sku: context.sku || '',
+      price: context.price,
+      shopId: context.shopId ?? null,
+    });
+  } else if (context.case === 'tie' && context.price != null && context.tieCount > 1) {
+    dispatchAnalytics('bestprice_tie', {
+      sku: context.sku || '',
+      price: context.price,
+      count: context.tieCount,
+    });
+  }
+
+  const trigger = document.querySelector('[data-bestprice-tie-trigger]');
+  if (!trigger) return;
+
+  const priceValue = Number(trigger.dataset.bestpriceTiePrice);
+  if (!Number.isFinite(priceValue)) return;
+
+  const highlightClass = 'bestprice-tie-highlight';
+  const highlightMs = 4000;
+
+  function getRows() {
+    const table = document.getElementById('price-table-all');
+    if (!table) return [];
+    return Array.from(table.querySelectorAll('tbody tr')).filter(row => !row.classList.contains('table-collapse-toggle-row'));
+  }
+
+  function clearHighlights() {
+    getRows().forEach(row => row.classList.remove(highlightClass));
+  }
+
+  function highlightRows() {
+    const rows = getRows();
+    if (!rows.length) return;
+
+    const matches = rows.filter(row => {
+      const value = Number(row.dataset.price);
+      return Number.isFinite(value) && value === priceValue;
+    });
+
+    if (!matches.length) return;
+
+    const allTabButton = document.querySelector('.tabs button[data-tab="all"]');
+    if (allTabButton && !allTabButton.classList.contains('active')) {
+      allTabButton.click();
+    }
+
+    const first = matches[0];
+    clearHighlights();
+    matches.forEach(row => row.classList.add(highlightClass));
+    first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    window.setTimeout(clearHighlights, highlightMs);
+  }
+
+  trigger.addEventListener('click', event => {
+    event.preventDefault();
+    highlightRows();
+  });
+})();`}></script>
           <div class="tabs">
             <button type="button" data-tab="all" class="active">全ストア</button>
             <button type="button" data-tab="rakuten">楽天のみ</button>
@@ -291,7 +466,7 @@ export function getStaticPaths() {
             {allList.length ? (
               <>
                 {hasAllPoints && <button class="sort-toggle">価格順に切替</button>}
-                <table class="price-table">
+                <table class="price-table" id="price-table-all">
                   <thead class="sr-only-mobile">
                     <tr>
                       <th id="col-all-store" scope="col">ストア</th>
