@@ -796,9 +796,6 @@ export function getStaticPaths() {
                 }
 
                 const normalized = anchor.startsWith('#') ? anchor : `#${anchor}`;
-                if (location.hash === normalized) {
-                  return;
-                }
 
                 try {
                   history.replaceState(history.state, '', normalized);
