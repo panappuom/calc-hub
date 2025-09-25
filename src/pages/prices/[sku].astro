@@ -690,9 +690,6 @@ export function getStaticPaths() {
                   const initialRows = Array.from(tbody.querySelectorAll('tr'));
                   if (initialRows.length <= 3) return null;
 
-                  const toggleWrapper = document.createElement('div');
-                  toggleWrapper.className = 'list-cta';
-
                   const expandButton = document.createElement('button');
                   expandButton.type = 'button';
                   expandButton.className = 'table-collapse-toggle';
@@ -709,8 +706,14 @@ export function getStaticPaths() {
                   collapseButton.setAttribute('aria-label', '折りたたむ');
                   collapseButton.setAttribute('aria-expanded', 'false');
 
+                  const toggleWrapper = document.createElement('div');
+                  toggleWrapper.className = 'list-cta';
                   toggleWrapper.appendChild(expandButton);
-                  toggleWrapper.appendChild(collapseButton);
+
+                  const bottomWrapper = document.createElement('div');
+                  bottomWrapper.className = 'list-cta list-cta--bottom';
+                  bottomWrapper.hidden = true;
+                  bottomWrapper.appendChild(collapseButton);
 
                   const toggleRow = document.createElement('tr');
                   toggleRow.className = 'table-collapse-toggle-row';
@@ -720,6 +723,20 @@ export function getStaticPaths() {
                   toggleCell.setAttribute('data-label', '');
                   toggleRow.appendChild(toggleCell);
                   toggleRow.hidden = true;
+
+                  const anchorRow = document.createElement('tr');
+                  anchorRow.className = 'table-anchor-row';
+                  const anchorCell = document.createElement('td');
+                  anchorCell.colSpan = toggleCell.colSpan;
+                  anchorCell.setAttribute('data-label', '');
+                  const anchorDiv = document.createElement('div');
+                  anchorDiv.className = 'list-anchor';
+                  if (!document.getElementById('list-anchor')) {
+                    anchorDiv.id = 'list-anchor';
+                  }
+                  anchorCell.appendChild(anchorDiv);
+                  anchorRow.appendChild(anchorCell);
+                  anchorRow.hidden = true;
 
                   const key = getStorageKey(section);
 
@@ -752,10 +769,14 @@ export function getStaticPaths() {
                   const ctx = {
                     section,
                     tbody,
+                    table,
                     toggleWrapper,
+                    bottomWrapper,
                     expandButton,
                     collapseButton,
                     toggleRow,
+                    anchorRow,
+                    anchorElement: anchorDiv,
                     key,
                     state,
                     observer: null,
@@ -765,6 +786,13 @@ export function getStaticPaths() {
 
                   function handleToggle(nextState) {
                     const isMobile = mobileQuery.matches;
+                    const collapsing = !nextState;
+                    let beforeY = null;
+                    if (collapsing && ctx.anchorElement) {
+                      const rect = ctx.anchorElement.getBoundingClientRect();
+                      beforeY = rect.top + window.scrollY;
+                    }
+
                     ctx.state = nextState;
                     writeState(ctx.key, ctx.state);
                     applyContext(ctx, isMobile);
@@ -777,6 +805,20 @@ export function getStaticPaths() {
                       }
                     } else if (ctx.state && ctx.anchorId) {
                       updateAnchor(ctx.anchorId);
+                    }
+
+                    if (collapsing && ctx.anchorElement) {
+                      requestAnimationFrame(() => {
+                        const rect = ctx.anchorElement?.getBoundingClientRect();
+                        if (!rect) return;
+                        const afterY = rect.top + window.scrollY;
+                        const beforeValue = beforeY ?? afterY;
+                        const delta = afterY - beforeValue;
+                        if (delta) {
+                          window.scrollBy({ top: delta, behavior: 'instant' });
+                        }
+                        ctx.expandButton?.focus();
+                      });
                     }
                   }
 
@@ -837,14 +879,22 @@ export function getStaticPaths() {
 
                 ctx.mutating = true;
                 const rows = Array.from(ctx.tbody.querySelectorAll('tr'));
-                const dataRows = rows.filter(row => !row.classList.contains('table-collapse-toggle-row'));
+                const dataRows = rows.filter(
+                  row =>
+                    !row.classList.contains('table-collapse-toggle-row') &&
+                    !row.classList.contains('table-anchor-row')
+                );
 
                 try {
                   if (!dataRows.length) {
                     ctx.toggleRow.hidden = true;
-                    ctx.toggleWrapper.classList.remove('is-expanded');
+                    ctx.anchorRow.hidden = true;
+                    ctx.bottomWrapper.hidden = true;
+                    ctx.toggleWrapper.hidden = false;
                     ctx.expandButton.setAttribute('aria-expanded', 'false');
                     ctx.collapseButton.setAttribute('aria-expanded', 'false');
+                    ctx.tbody.removeAttribute('aria-expanded');
+                    ctx.tbody.classList.remove('store-list');
                     return;
                   }
 
@@ -854,14 +904,26 @@ export function getStaticPaths() {
                   if (toggleCell instanceof HTMLTableCellElement) {
                     toggleCell.colSpan = columnCount;
                   }
+                  const anchorCell = ctx.anchorRow.firstElementChild;
+                  if (anchorCell instanceof HTMLTableCellElement) {
+                    anchorCell.colSpan = columnCount;
+                  }
+
+                  if (ctx.table && ctx.bottomWrapper && ctx.table.nextElementSibling !== ctx.bottomWrapper) {
+                    ctx.table.insertAdjacentElement('afterend', ctx.bottomWrapper);
+                  }
 
                   const shouldToggle = dataRows.length > 3 && isMobile;
+                  ctx.tbody.classList.toggle('store-list', shouldToggle);
 
                   if (!shouldToggle) {
                     ctx.toggleRow.hidden = true;
-                    ctx.toggleWrapper.classList.remove('is-expanded');
+                    ctx.anchorRow.hidden = true;
+                    ctx.bottomWrapper.hidden = true;
+                    ctx.toggleWrapper.hidden = false;
                     ctx.expandButton.setAttribute('aria-expanded', 'true');
                     ctx.collapseButton.setAttribute('aria-expanded', 'true');
+                    ctx.tbody.setAttribute('aria-expanded', 'true');
                     dataRows.forEach(row => {
                       row.hidden = false;
                       row.classList.remove('is-collapsed-row');
@@ -871,16 +933,33 @@ export function getStaticPaths() {
 
                   const expanded = Boolean(ctx.state);
                   const expandedValue = expanded ? 'true' : 'false';
-                  ctx.toggleRow.hidden = false;
-                  ctx.toggleWrapper.classList.toggle('is-expanded', expanded);
+                  ctx.tbody.setAttribute('aria-expanded', expandedValue);
+                  ctx.toggleWrapper.hidden = expanded;
+                  ctx.toggleRow.hidden = expanded;
+                  ctx.anchorRow.hidden = false;
+                  ctx.bottomWrapper.hidden = !expanded;
                   ctx.expandButton.setAttribute('aria-expanded', expandedValue);
                   ctx.collapseButton.setAttribute('aria-expanded', expandedValue);
 
+                  const anchorIndex = Math.min(2, dataRows.length);
+                  const anchorReference = dataRows[anchorIndex] || ctx.toggleRow;
+                  if (anchorReference) {
+                    if (ctx.anchorRow !== anchorReference.previousElementSibling) {
+                      ctx.tbody.insertBefore(ctx.anchorRow, anchorReference);
+                    }
+                  } else if (ctx.tbody.lastElementChild !== ctx.anchorRow) {
+                    ctx.tbody.appendChild(ctx.anchorRow);
+                  }
+
                   const insertIndex = Math.min(3, dataRows.length);
                   const referenceRow = dataRows[insertIndex] || null;
-                  if (referenceRow) {
-                    if (ctx.toggleRow.nextElementSibling !== referenceRow) {
-                      ctx.tbody.insertBefore(ctx.toggleRow, referenceRow);
+                  if (!expanded) {
+                    if (referenceRow) {
+                      if (ctx.toggleRow.nextElementSibling !== referenceRow) {
+                        ctx.tbody.insertBefore(ctx.toggleRow, referenceRow);
+                      }
+                    } else if (ctx.tbody.lastElementChild !== ctx.toggleRow) {
+                      ctx.tbody.appendChild(ctx.toggleRow);
                     }
                   } else if (ctx.tbody.lastElementChild !== ctx.toggleRow) {
                     ctx.tbody.appendChild(ctx.toggleRow);
