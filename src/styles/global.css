@@ -299,6 +299,7 @@ label {
   flex-direction: column;
   gap: 8px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
 }
 
 .best-price-card:focus-within {
@@ -351,6 +352,38 @@ label {
 .best-price-card__line--link {
   margin-top: auto;
   font-weight: 700;
+}
+
+.best-price-card__badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--link);
+  color: var(--badge-fg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+.best-price-card__note {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.best-price-card__note + .best-price-card__note {
+  margin-top: 6px;
+}
+
+.best-price-card__note--link {
+  text-align: right;
+}
+
+.best-price-card__tie-link {
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 .best-price-card__line--empty {
@@ -673,6 +706,17 @@ label {
 
 .price-table tbody tr:nth-child(even) td[data-cell="effective"] {
   background: var(--effective-highlight);
+}
+
+.price-table tbody tr.bestprice-tie-highlight {
+  position: relative;
+  z-index: 1;
+}
+
+.price-table tbody tr.bestprice-tie-highlight td {
+  background: rgba(37, 99, 235, 0.18);
+  background: color-mix(in srgb, var(--link) 24%, transparent);
+  transition: background-color 0.3s ease;
 }
 
 @media (max-width: 768px) {
