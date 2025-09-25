@@ -183,7 +183,7 @@ export function getStaticPaths() {
     <div class="wrap">
         <a href="./" class="small">← トップ</a>
       <h1 set:html={safeBreak(`${skuInfo ? skuInfo.q : sku} – 価格一覧`)}></h1>
-      <p class="jp-copy">ショップ別の価格を一覧しています。並び順は <span class="nobr">目安（価格）です。</span></p>
+      <p class="jp-copy">ショップ別の価格一覧です。実質価格（ポイント込み）で安い順に並べています。</p>
       <p class="small jp-copy">
         {data
           ? `取得日時: ${new Date(data.updatedAt).toLocaleString('ja-JP')}`
