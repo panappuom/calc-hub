@@ -62,6 +62,16 @@ function withEffectivePrice(it) {
   };
 }
 
+function getEffectiveValue(it) {
+  if (!it) return Number.NaN;
+  const effective = Number(it.effective);
+  if (Number.isFinite(effective)) {
+    return effective;
+  }
+  const fallback = getEffectivePriceValue(it);
+  return Number.isFinite(fallback) ? fallback : Number.NaN;
+}
+
 function normalizeShopName(name) {
   if (typeof name !== 'string') return '';
   return name
@@ -147,19 +157,19 @@ const bestTodayCard = getPriceCardModel(bestToday, { prefix: '最安' });
 const bestRecommendedCard = getPriceCardModel(bestRecommended, { prefix: '推奨' });
 
 const hasRecommendedSection = Boolean(skuInfo?.brandHints?.length);
-const bestTodayPriceValue = Number(bestToday?.price);
-const bestRecommendedPriceValue = Number(bestRecommended?.price);
+const bestTodayEffectiveValue = getEffectiveValue(bestToday);
+const bestRecommendedEffectiveValue = getEffectiveValue(bestRecommended);
 const isSamePrice =
-  Number.isFinite(bestTodayPriceValue) &&
-  Number.isFinite(bestRecommendedPriceValue) &&
-  bestTodayPriceValue === bestRecommendedPriceValue;
+  Number.isFinite(bestTodayEffectiveValue) &&
+  Number.isFinite(bestRecommendedEffectiveValue) &&
+  bestTodayEffectiveValue === bestRecommendedEffectiveValue;
 const isSameOffer = bestToday && bestRecommended ? equalsByPriceShop(bestToday, bestRecommended) : false;
 const bestPriceCase = hasRecommendedSection && bestTodayCard && bestRecommendedCard && isSamePrice
   ? (isSameOffer ? 'merge' : 'tie')
   : 'separate';
 const tieSourceList = allList.length ? allList : list;
-const tieCount = Number.isFinite(bestTodayPriceValue)
-  ? tieSourceList.filter(it => Number(it.price) === bestTodayPriceValue).length
+const tieCount = Number.isFinite(bestTodayEffectiveValue)
+  ? tieSourceList.filter(it => getEffectiveValue(it) === bestTodayEffectiveValue).length
   : 0;
 const shouldShowTieLink = bestPriceCase === 'tie' && tieCount > 1;
 const showRecommendedCard = hasRecommendedSection && bestPriceCase === 'separate';
@@ -167,7 +177,7 @@ const showRecommendedCard = hasRecommendedSection && bestPriceCase === 'separate
 const bestPriceContext = {
   case: bestPriceCase,
   sku,
-  price: Number.isFinite(bestTodayPriceValue) ? bestTodayPriceValue : null,
+  price: Number.isFinite(bestTodayEffectiveValue) ? bestTodayEffectiveValue : null,
   shopId: bestToday?.shopId ?? null,
   tieCount,
 };
@@ -321,7 +331,7 @@ export function getStaticPaths() {
                           href="#price-table-all"
                           class="best-price-card__tie-link"
                           data-bestprice-tie-trigger
-                          data-bestprice-tie-price={String(bestTodayPriceValue)}
+                          data-bestprice-tie-effective={String(bestTodayEffectiveValue)}
                         >
                           同額 {tieCount} 件を見る
                         </a>
@@ -411,8 +421,8 @@ export function getStaticPaths() {
   const trigger = document.querySelector('[data-bestprice-tie-trigger]');
   if (!trigger) return;
 
-  const priceValue = Number(trigger.dataset.bestpriceTiePrice);
-  if (!Number.isFinite(priceValue)) return;
+  const effectiveValue = Number(trigger.dataset.bestpriceTieEffective);
+  if (!Number.isFinite(effectiveValue)) return;
 
   const highlightClass = 'bestprice-tie-highlight';
   const highlightMs = 4000;
@@ -432,8 +442,8 @@ export function getStaticPaths() {
     if (!rows.length) return;
 
     const matches = rows.filter(row => {
-      const value = Number(row.dataset.price);
-      return Number.isFinite(value) && value === priceValue;
+      const value = Number(row.dataset.eff);
+      return Number.isFinite(value) && value === effectiveValue;
     });
 
     if (!matches.length) return;
