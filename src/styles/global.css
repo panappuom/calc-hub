@@ -490,6 +490,30 @@ label {
   font-weight: 600;
 }
 
+.list-cta {
+  min-height: 44px;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+}
+
+.list-cta button[data-cta] {
+  width: 100%;
+}
+
+.list-cta button[data-cta='collapse'] {
+  display: none;
+}
+
+.list-cta.is-expanded button[data-cta='expand'] {
+  display: none;
+}
+
+.list-cta.is-expanded button[data-cta='collapse'] {
+  display: inline-flex;
+}
+
 .table-collapse-toggle {
   display: inline-flex;
   align-items: center;

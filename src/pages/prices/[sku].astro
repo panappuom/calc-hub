@@ -690,22 +690,36 @@ export function getStaticPaths() {
                   const initialRows = Array.from(tbody.querySelectorAll('tr'));
                   if (initialRows.length <= 3) return null;
 
-                  const toggle = document.createElement('button');
-                  toggle.type = 'button';
-                  toggle.className = 'table-collapse-toggle';
-                  toggle.textContent = 'すべて表示';
-                  toggle.setAttribute('role', 'button');
-                  toggle.setAttribute('aria-label', 'すべて表示');
-                  toggle.setAttribute('aria-expanded', 'false');
-                  toggle.hidden = true;
+                  const toggleWrapper = document.createElement('div');
+                  toggleWrapper.className = 'list-cta';
+
+                  const expandButton = document.createElement('button');
+                  expandButton.type = 'button';
+                  expandButton.className = 'table-collapse-toggle';
+                  expandButton.dataset.cta = 'expand';
+                  expandButton.textContent = 'すべて表示';
+                  expandButton.setAttribute('aria-label', 'すべて表示');
+                  expandButton.setAttribute('aria-expanded', 'false');
+
+                  const collapseButton = document.createElement('button');
+                  collapseButton.type = 'button';
+                  collapseButton.className = 'table-collapse-toggle';
+                  collapseButton.dataset.cta = 'collapse';
+                  collapseButton.textContent = '折りたたむ';
+                  collapseButton.setAttribute('aria-label', '折りたたむ');
+                  collapseButton.setAttribute('aria-expanded', 'false');
+
+                  toggleWrapper.appendChild(expandButton);
+                  toggleWrapper.appendChild(collapseButton);
 
                   const toggleRow = document.createElement('tr');
                   toggleRow.className = 'table-collapse-toggle-row';
                   const toggleCell = document.createElement('td');
                   toggleCell.colSpan = initialRows[0]?.children?.length || 1;
-                  toggleCell.appendChild(toggle);
+                  toggleCell.appendChild(toggleWrapper);
                   toggleCell.setAttribute('data-label', '');
                   toggleRow.appendChild(toggleCell);
+                  toggleRow.hidden = true;
 
                   const key = getStorageKey(section);
 
@@ -717,7 +731,8 @@ export function getStaticPaths() {
                         .replace(/^-+|-+$/g, '') || Math.random().toString(36).slice(2)}`;
                       table.id = safeId;
                     }
-                    toggle.setAttribute('aria-controls', table.id);
+                    expandButton.setAttribute('aria-controls', table.id);
+                    collapseButton.setAttribute('aria-controls', table.id);
                   }
 
                   let state = readState(key);
@@ -737,7 +752,9 @@ export function getStaticPaths() {
                   const ctx = {
                     section,
                     tbody,
-                    toggle,
+                    toggleWrapper,
+                    expandButton,
+                    collapseButton,
                     toggleRow,
                     key,
                     state,
@@ -746,9 +763,9 @@ export function getStaticPaths() {
                     anchorId,
                   };
 
-                  toggle.addEventListener('click', () => {
+                  function handleToggle(nextState) {
                     const isMobile = mobileQuery.matches;
-                    ctx.state = !ctx.state;
+                    ctx.state = nextState;
                     writeState(ctx.key, ctx.state);
                     applyContext(ctx, isMobile);
 
@@ -761,6 +778,14 @@ export function getStaticPaths() {
                     } else if (ctx.state && ctx.anchorId) {
                       updateAnchor(ctx.anchorId);
                     }
+                  }
+
+                  expandButton.addEventListener('click', () => {
+                    handleToggle(true);
+                  });
+
+                  collapseButton.addEventListener('click', () => {
+                    handleToggle(false);
                   });
 
                   const observer = new MutationObserver(() => {
@@ -814,10 +839,10 @@ export function getStaticPaths() {
 
                 try {
                   if (!dataRows.length) {
-                    ctx.toggle.hidden = true;
-                    if (ctx.toggleRow.parentElement) {
-                      ctx.toggleRow.remove();
-                    }
+                    ctx.toggleRow.hidden = true;
+                    ctx.toggleWrapper.classList.remove('is-expanded');
+                    ctx.expandButton.setAttribute('aria-expanded', 'false');
+                    ctx.collapseButton.setAttribute('aria-expanded', 'false');
                     return;
                   }
 
@@ -828,42 +853,35 @@ export function getStaticPaths() {
                     toggleCell.colSpan = columnCount;
                   }
 
-                  if (dataRows.length <= 3 || !isMobile) {
-                    ctx.toggle.hidden = true;
-                    ctx.toggle.setAttribute('aria-expanded', 'true');
+                  const shouldToggle = dataRows.length > 3 && isMobile;
+
+                  if (!shouldToggle) {
+                    ctx.toggleRow.hidden = true;
+                    ctx.toggleWrapper.classList.remove('is-expanded');
+                    ctx.expandButton.setAttribute('aria-expanded', 'true');
+                    ctx.collapseButton.setAttribute('aria-expanded', 'true');
                     dataRows.forEach(row => {
                       row.hidden = false;
                       row.classList.remove('is-collapsed-row');
                     });
-                    if (ctx.toggleRow.parentElement) {
-                      ctx.toggleRow.remove();
-                    }
                     return;
                   }
 
-                  ctx.toggle.hidden = false;
                   const expanded = Boolean(ctx.state);
-                  ctx.toggle.textContent = expanded ? '折りたたむ' : 'すべて表示';
-                  ctx.toggle.setAttribute('aria-label', expanded ? '折りたたむ' : 'すべて表示');
-                  ctx.toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-                  if (ctx.toggleRow.parentElement !== ctx.tbody) {
-                    ctx.tbody.appendChild(ctx.toggleRow);
-                  }
+                  const expandedValue = expanded ? 'true' : 'false';
+                  ctx.toggleRow.hidden = false;
+                  ctx.toggleWrapper.classList.toggle('is-expanded', expanded);
+                  ctx.expandButton.setAttribute('aria-expanded', expandedValue);
+                  ctx.collapseButton.setAttribute('aria-expanded', expandedValue);
 
-                  if (expanded) {
-                    if (ctx.tbody.lastElementChild !== ctx.toggleRow) {
-                      ctx.tbody.appendChild(ctx.toggleRow);
+                  const insertIndex = Math.min(3, dataRows.length);
+                  const referenceRow = dataRows[insertIndex] || null;
+                  if (referenceRow) {
+                    if (ctx.toggleRow.nextElementSibling !== referenceRow) {
+                      ctx.tbody.insertBefore(ctx.toggleRow, referenceRow);
                     }
-                  } else {
-                    const insertIndex = Math.min(3, dataRows.length);
-                    const referenceRow = dataRows[insertIndex] || null;
-                    if (referenceRow) {
-                      if (ctx.toggleRow.nextElementSibling !== referenceRow) {
-                        ctx.tbody.insertBefore(ctx.toggleRow, referenceRow);
-                      }
-                    } else if (ctx.tbody.lastElementChild !== ctx.toggleRow) {
-                      ctx.tbody.appendChild(ctx.toggleRow);
-                    }
+                  } else if (ctx.tbody.lastElementChild !== ctx.toggleRow) {
+                    ctx.tbody.appendChild(ctx.toggleRow);
                   }
 
                   dataRows.forEach((row, index) => {
