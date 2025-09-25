@@ -747,11 +747,18 @@ export function getStaticPaths() {
                   };
 
                   toggle.addEventListener('click', () => {
+                    const isMobile = mobileQuery.matches;
                     ctx.state = !ctx.state;
                     writeState(ctx.key, ctx.state);
-                    applyContext(ctx, mobileQuery.matches);
+                    applyContext(ctx, isMobile);
 
-                    if (ctx.state && ctx.anchorId) {
+                    if (isMobile) {
+                      const currentAnchor = getCurrentAnchor();
+                      const anchorTarget = currentAnchor || ctx.anchorId;
+                      if (anchorTarget) {
+                        updateAnchor(anchorTarget);
+                      }
+                    } else if (ctx.state && ctx.anchorId) {
                       updateAnchor(ctx.anchorId);
                     }
                   });
@@ -773,6 +780,14 @@ export function getStaticPaths() {
 
               if (!contexts.length) return;
 
+              function getCurrentAnchor() {
+                const { location } = window;
+                if (!location) return '';
+                const { hash } = location;
+                if (typeof hash !== 'string' || !hash) return '';
+                return hash.replace(/^#+/, '');
+              }
+
               function updateAnchor(anchor) {
                 if (!anchor) return;
                 const { history, location } = window;
@@ -781,9 +796,6 @@ export function getStaticPaths() {
                 }
 
                 const normalized = anchor.startsWith('#') ? anchor : `#${anchor}`;
-                if (location.hash === normalized) {
-                  return;
-                }
 
                 try {
                   history.replaceState(history.state, '', normalized);
