@@ -666,6 +666,110 @@ export function getStaticPaths() {
               const sku = document.body?.dataset?.sku || '';
               const mobileQuery = window.matchMedia('(max-width: 768px)');
 
+              function getScrollerElement() {
+                if (document.scrollingElement instanceof HTMLElement) {
+                  return document.scrollingElement;
+                }
+                if (document.documentElement instanceof HTMLElement) {
+                  return document.documentElement;
+                }
+                return null;
+              }
+
+              function getScrollY() {
+                if (typeof window.scrollY === 'number') {
+                  return window.scrollY;
+                }
+                if (typeof window.pageYOffset === 'number') {
+                  return window.pageYOffset;
+                }
+                const doc = document.documentElement;
+                if (doc && typeof doc.scrollTop === 'number') {
+                  return doc.scrollTop;
+                }
+                return 0;
+              }
+
+              function restoreOverflowAnchor(element, previous) {
+                if (!(element instanceof HTMLElement)) {
+                  return;
+                }
+                if (previous) {
+                  element.style.overflowAnchor = previous;
+                } else {
+                  element.style.removeProperty('overflow-anchor');
+                }
+              }
+
+              function collapseWithCompensation(button, listElement, toggleFn, options = {}) {
+                const anchorOption = options && options.anchor === 'bottom' ? 'bottom' : 'top';
+                const toggle = typeof toggleFn === 'function' ? toggleFn : null;
+                if (!toggle) {
+                  return;
+                }
+
+                const scroller = getScrollerElement();
+                const list = listElement instanceof HTMLElement ? listElement : null;
+                const previousOverflowAnchor = list ? list.style.overflowAnchor || '' : '';
+                if (list) {
+                  list.style.overflowAnchor = 'none';
+                }
+
+                let hasMeasurements = false;
+                let beforeTop = 0;
+                let beforeDistFromBottom = 0;
+
+                if (button instanceof HTMLElement && scroller) {
+                  hasMeasurements = true;
+                  const beforeY = getScrollY();
+                  const rect = button.getBoundingClientRect();
+                  beforeTop = rect.top + beforeY;
+                  beforeDistFromBottom = scroller.scrollHeight - (beforeY + window.innerHeight);
+                }
+
+                const finalize = () => {
+                  if (list) {
+                    restoreOverflowAnchor(list, previousOverflowAnchor);
+                  }
+                };
+
+                try {
+                  toggle();
+                } finally {
+                  if (!hasMeasurements || typeof requestAnimationFrame !== 'function') {
+                    finalize();
+                    return;
+                  }
+
+                  requestAnimationFrame(() => {
+                    if (!(button instanceof HTMLElement) || !scroller) {
+                      finalize();
+                      return;
+                    }
+
+                    let delta = 0;
+                    if (anchorOption === 'bottom') {
+                      const afterY = getScrollY();
+                      const afterDistFromBottom = scroller.scrollHeight - (afterY + window.innerHeight);
+                      delta = afterDistFromBottom - beforeDistFromBottom;
+                    } else {
+                      const afterTop = button.getBoundingClientRect().top + getScrollY();
+                      delta = afterTop - beforeTop;
+                    }
+
+                    if (Math.abs(delta) > 0.5) {
+                      try {
+                        window.scrollBy({ top: delta, behavior: 'instant' });
+                      } catch {
+                        window.scrollBy(0, delta);
+                      }
+                    }
+
+                    finalize();
+                  });
+                }
+              }
+
               const storage = (() => {
                 try {
                   const testKey = '__price_sec_test__';
@@ -721,6 +825,7 @@ export function getStaticPaths() {
                   collapseButton.type = 'button';
                   collapseButton.className = 'table-collapse-toggle';
                   collapseButton.dataset.cta = 'collapse';
+                  collapseButton.dataset.collapseAnchor = 'top';
                   collapseButton.textContent = '折りたたむ';
                   collapseButton.setAttribute('aria-label', '折りたたむ');
                   collapseButton.setAttribute('aria-expanded', 'false');
@@ -800,8 +905,44 @@ export function getStaticPaths() {
                     handleToggle(true);
                   });
 
-                  collapseButton.addEventListener('click', () => {
-                    handleToggle(false);
+                  section.addEventListener('click', event => {
+                    const target = event.target;
+                    if (!(target instanceof Element)) {
+                      return;
+                    }
+
+                    const collapseTrigger = target.closest(
+                      'button.table-collapse-toggle[data-cta="collapse"]'
+                    );
+                    if (!(collapseTrigger instanceof HTMLButtonElement)) {
+                      return;
+                    }
+
+                    if (!ctx.state) {
+                      return;
+                    }
+
+                    const anchorAttr =
+                      collapseTrigger.dataset.collapseAnchor
+                      || collapseTrigger.getAttribute('data-collapse-anchor')
+                      || '';
+                    const anchorMode =
+                      anchorAttr === 'bottom'
+                        ? 'bottom'
+                        : anchorAttr === 'top'
+                          ? 'top'
+                          : collapseTrigger.closest('tr') === ctx.toggleRow
+                            ? 'top'
+                            : 'bottom';
+
+                    collapseWithCompensation(
+                      collapseTrigger,
+                      ctx.tbody,
+                      () => {
+                        handleToggle(false);
+                      },
+                      { anchor: anchorMode }
+                    );
                   });
 
                   const observer = new MutationObserver(() => {
