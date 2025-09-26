@@ -753,7 +753,20 @@ export function getStaticPaths() {
                       const afterDistFromBottom = scroller.scrollHeight - (afterY + window.innerHeight);
                       delta = afterDistFromBottom - beforeDistFromBottom;
                     } else {
-                      const afterTop = button.getBoundingClientRect().top + getScrollY();
+                      const rect = button.getBoundingClientRect();
+                      if (
+                        rect.width === 0 &&
+                        rect.height === 0 &&
+                        typeof window.getComputedStyle === 'function'
+                      ) {
+                        const display = window.getComputedStyle(button).display;
+                        if (!display || display === 'none') {
+                          finalize();
+                          return;
+                        }
+                      }
+
+                      const afterTop = rect.top + getScrollY();
                       delta = afterTop - beforeTop;
                     }
 
