@@ -501,7 +501,16 @@ export function getStaticPaths() {
                             <span class={getStoreBadgeClass(it.store)}>{it.store}</span>
                           </td>
                           <td headers="col-all-shop" data-label="ショップ" data-cell="shop">
-                            <span class="shop-name" title={it.shopName}>
+                            <span class="sr-only">ショップ</span>
+                            <div class="price-card-head">
+                              <div class="badges">
+                                <span class={getStoreBadgeClass(it.store)}>{it.store}</span>
+                              </div>
+                              <div class="shop-name" title={it.shopName}>
+                                {it.shopName}
+                              </div>
+                            </div>
+                            <span class="shop-name shop-name--desktop" title={it.shopName}>
                               {it.shopName}
                             </span>
                           </td>
@@ -568,7 +577,14 @@ export function getStaticPaths() {
                         return (
                           <tr data-price={it.price} data-eff={eff}>
                             <td headers={`col-${sec.key}-shop`} data-label="ショップ" data-cell="shop">
-                              <span class="shop-name" title={it.shopName}>
+                              <span class="sr-only">ショップ</span>
+                              <div class="price-card-head">
+                                <div class="badges"></div>
+                                <div class="shop-name" title={it.shopName}>
+                                  {it.shopName}
+                                </div>
+                              </div>
+                              <span class="shop-name shop-name--desktop" title={it.shopName}>
                                 {it.shopName}
                               </span>
                             </td>
@@ -923,36 +939,57 @@ export function getStaticPaths() {
             (function () {
               const RANK_LIMIT = 3;
 
-              function getBadgeHost(row) {
-                return (
-                  row.querySelector('td[data-cell="shop"]') ||
-                  row.querySelector('td[data-cell="store"]') ||
-                  row.querySelector('td') ||
-                  null
-                );
+              function getBadgeHosts(row) {
+                const hosts = [];
+                const headerHost = row.querySelector('.price-card-head .badges');
+                if (headerHost) {
+                  hosts.push(headerHost);
+                }
+                const storeCell = row.querySelector('td[data-cell="store"]');
+                if (storeCell) {
+                  hosts.push(storeCell);
+                } else {
+                  const shopCell = row.querySelector('td[data-cell="shop"]');
+                  if (shopCell) {
+                    hosts.push(shopCell);
+                  }
+                }
+                if (!hosts.length) {
+                  const fallback = row.querySelector('td');
+                  if (fallback) {
+                    hosts.push(fallback);
+                  }
+                }
+                return hosts;
               }
 
               function clearBadge(row) {
-                const badge = row.querySelector('.rank-badge');
-                if (badge && badge.parentElement) {
-                  badge.parentElement.removeChild(badge);
-                }
+                const badges = row.querySelectorAll('.rank-badge');
+                badges.forEach(badge => {
+                  if (badge.parentElement) {
+                    badge.parentElement.removeChild(badge);
+                  }
+                });
               }
 
               function applyBadge(row, rank, basisLabel) {
-                const host = getBadgeHost(row);
-                if (!host) return;
-                let badge = host.querySelector('.rank-badge');
-                if (!badge) {
-                  badge = document.createElement('span');
-                  badge.className = 'rank-badge';
-                  host.insertBefore(badge, host.firstChild || null);
-                }
-                badge.textContent = `${rank}位`;
-                badge.className = `rank-badge rank-badge--${rank}`;
+                const hosts = getBadgeHosts(row);
+                if (!hosts.length) return;
                 const ariaLabel = `ランキング${rank}位（${basisLabel}）`;
-                badge.setAttribute('aria-label', ariaLabel);
-                badge.setAttribute('title', ariaLabel);
+                hosts.forEach(host => {
+                  let badge = Array.from(host.children || []).find(child =>
+                    child.classList && child.classList.contains('rank-badge')
+                  );
+                  if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'rank-badge';
+                    host.insertBefore(badge, host.firstChild || null);
+                  }
+                  badge.textContent = `${rank}位`;
+                  badge.className = `rank-badge rank-badge--${rank}`;
+                  badge.setAttribute('aria-label', ariaLabel);
+                  badge.setAttribute('title', ariaLabel);
+                });
               }
 
               function getMetricKey(metric) {

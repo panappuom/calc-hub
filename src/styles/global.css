@@ -724,6 +724,10 @@ label {
   word-break: break-word;
 }
 
+.price-card-head {
+  display: none;
+}
+
 .price-table tbody tr:nth-child(even) {
   background: var(--table-row-alt-bg);
 }
@@ -839,54 +843,47 @@ label {
   }
 
   .price-table td[data-cell="shop"] {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 8px;
-    align-items: start;
-  }
-
-  .price-table td[data-cell="shop"] .rank-badge {
-    grid-column: 1 / -1;
-    justify-self: flex-start;
-    margin-right: 0;
+    display: block;
   }
 
   .price-table td[data-cell="shop"]::before {
-    margin: 0;
-    align-self: start;
-  }
-
-  .price-table td[data-cell="shop"] .shop-name {
-    margin-bottom: 0;
-    text-align: right;
-    justify-self: end;
-  }
-
-  .price-table td[data-cell="store"] {
-    position: static;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 6px;
-    padding: 0;
-    margin-bottom: 4px;
-    width: 100%;
-  }
-
-  .price-table td[data-cell="store"]::before {
-    content: "";
     display: none;
   }
 
-  .price-table td[data-cell="store"] .rank-badge {
-    margin-right: 0;
+  .price-table td[data-cell="shop"] > .rank-badge {
+    display: none;
   }
 
-  .price-table td[data-cell="store"] .store-badge {
-    max-width: 100%;
-    white-space: normal;
+  .price-table td[data-cell="shop"] > .shop-name--desktop {
+    display: none;
+  }
+
+  .price-card-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .price-card-head .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .price-card-head .shop-name {
+    display: block;
+    margin: 0;
+    text-align: right;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .price-table td[data-cell="store"] {
+    display: none;
   }
 
   .price-table td[data-cell="action"] {
