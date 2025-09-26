@@ -1100,14 +1100,25 @@ export function getStaticPaths() {
                   hosts.push(headerHost);
                 }
                 const storeCell = row.querySelector('td[data-cell="store"]');
-                if (storeCell) {
-                  hosts.push(storeCell);
-                } else {
-                  const shopCell = row.querySelector('td[data-cell="shop"]');
-                  if (shopCell) {
+                const shopCell = row.querySelector('td[data-cell="shop"]');
+                const table = row.closest('table');
+                const isAllStoresTable = table && table.id === 'price-table-all';
+
+                if (isAllStoresTable && shopCell) {
+                  const desktopHost = shopCell.querySelector('.shop-name--desktop');
+                  if (desktopHost) {
+                    hosts.push(desktopHost);
+                  } else {
                     hosts.push(shopCell);
                   }
                 }
+
+                if (storeCell) {
+                  hosts.push(storeCell);
+                } else if (shopCell) {
+                  hosts.push(shopCell);
+                }
+
                 if (!hosts.length) {
                   const fallback = row.querySelector('td');
                   if (fallback) {
