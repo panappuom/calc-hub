@@ -977,7 +977,9 @@ export function getStaticPaths() {
                 if (!hosts.length) return;
                 const ariaLabel = `ランキング${rank}位（${basisLabel}）`;
                 hosts.forEach(host => {
-                  let badge = host.querySelector('.rank-badge');
+                  let badge = Array.from(host.children || []).find(child =>
+                    child.classList && child.classList.contains('rank-badge')
+                  );
                   if (!badge) {
                     badge = document.createElement('span');
                     badge.className = 'rank-badge';
