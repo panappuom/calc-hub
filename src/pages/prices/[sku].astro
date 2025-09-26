@@ -919,6 +919,7 @@ export function getStaticPaths() {
                     expandButton,
                     collapseButton,
                     bottomToggleRow,
+                    bottomToggleWrapper: bottomWrapper,
                     bottomCollapseButton: bottomCollapseBtn,
                     toggleRow,
                     key,
@@ -1045,6 +1046,7 @@ export function getStaticPaths() {
                     ctx.toggleRow.hidden = true;
                     ctx.bottomToggleRow.hidden = true;
                     ctx.toggleWrapper.classList.remove('is-expanded');
+                    ctx.bottomToggleWrapper.classList.remove('is-expanded');
                     ctx.expandButton.setAttribute('aria-expanded', 'false');
                     ctx.collapseButton.setAttribute('aria-expanded', 'false');
                     ctx.bottomCollapseButton.setAttribute('aria-expanded', 'false');
@@ -1068,6 +1070,7 @@ export function getStaticPaths() {
                     ctx.toggleRow.hidden = true;
                     ctx.bottomToggleRow.hidden = true;
                     ctx.toggleWrapper.classList.remove('is-expanded');
+                    ctx.bottomToggleWrapper.classList.remove('is-expanded');
                     ctx.expandButton.setAttribute('aria-expanded', 'true');
                     ctx.collapseButton.setAttribute('aria-expanded', 'true');
                     ctx.bottomCollapseButton.setAttribute('aria-expanded', 'true');
@@ -1083,6 +1086,7 @@ export function getStaticPaths() {
                   ctx.toggleRow.hidden = false;
                   ctx.bottomToggleRow.hidden = !expanded;
                   ctx.toggleWrapper.classList.toggle('is-expanded', expanded);
+                  ctx.bottomToggleWrapper.classList.toggle('is-expanded', expanded);
                   ctx.expandButton.setAttribute('aria-expanded', expandedValue);
                   ctx.collapseButton.setAttribute('aria-expanded', expandedValue);
                   ctx.bottomCollapseButton.setAttribute('aria-expanded', expandedValue);
