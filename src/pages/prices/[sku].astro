@@ -772,7 +772,12 @@ export function getStaticPaths() {
 
                     if (Math.abs(delta) > 0.5) {
                       try {
-                        window.scrollBy({ top: delta, behavior: 'instant' });
+                        // 'instant' は標準外なので 'auto' に変更し、確実に補正
+                        if (typeof window.scrollTo === 'function') {
+                          window.scrollTo({ top: getScrollY() + delta, behavior: 'auto' });
+                        } else {
+                          window.scrollBy(0, delta);
+                        }
                       } catch {
                         window.scrollBy(0, delta);
                       }
@@ -855,6 +860,29 @@ export function getStaticPaths() {
                   toggleRow.appendChild(toggleCell);
                   toggleRow.hidden = true;
 
+                  // ▼▼ 末尾用の副CTA（折りたたむ）を追加 ▼▼
+                  const bottomToggleRow = document.createElement('tr');
+                  bottomToggleRow.className = 'table-collapse-toggle-row table-collapse-toggle-row--bottom';
+                  const bottomToggleCell = document.createElement('td');
+                  bottomToggleCell.colSpan = initialRows[0]?.children?.length || 1;
+                  const bottomWrapper = document.createElement('div');
+                  bottomWrapper.className = 'list-cta list-cta--bottom';
+
+                  const bottomCollapseBtn = document.createElement('button');
+                  bottomCollapseBtn.type = 'button';
+                  bottomCollapseBtn.className = 'table-collapse-toggle';
+                  bottomCollapseBtn.dataset.cta = 'collapse';
+                  bottomCollapseBtn.dataset.collapseAnchor = 'bottom';
+                  bottomCollapseBtn.textContent = '折りたたむ';
+                  bottomCollapseBtn.setAttribute('aria-label', '折りたたむ');
+                  bottomCollapseBtn.setAttribute('aria-expanded', 'true');
+
+                  bottomWrapper.appendChild(bottomCollapseBtn);
+                  bottomToggleCell.appendChild(bottomWrapper);
+                  bottomToggleRow.appendChild(bottomToggleCell);
+                  bottomToggleRow.hidden = true;
+                  // ▲▲ 末尾用の副CTA（折りたたむ）を追加 ▲▲
+
                   const key = getStorageKey(section);
 
                   const table = section.querySelector('table');
@@ -867,6 +895,7 @@ export function getStaticPaths() {
                     }
                     expandButton.setAttribute('aria-controls', table.id);
                     collapseButton.setAttribute('aria-controls', table.id);
+                    bottomCollapseBtn.setAttribute('aria-controls', table.id);
                   }
 
                   let state = readState(key);
@@ -889,6 +918,9 @@ export function getStaticPaths() {
                     toggleWrapper,
                     expandButton,
                     collapseButton,
+                    bottomToggleRow,
+                    bottomToggleWrapper: bottomWrapper,
+                    bottomCollapseButton: bottomCollapseBtn,
                     toggleRow,
                     key,
                     state,
@@ -1012,9 +1044,12 @@ export function getStaticPaths() {
                 try {
                   if (!dataRows.length) {
                     ctx.toggleRow.hidden = true;
+                    ctx.bottomToggleRow.hidden = true;
                     ctx.toggleWrapper.classList.remove('is-expanded');
+                    ctx.bottomToggleWrapper.classList.remove('is-expanded');
                     ctx.expandButton.setAttribute('aria-expanded', 'false');
                     ctx.collapseButton.setAttribute('aria-expanded', 'false');
+                    ctx.bottomCollapseButton.setAttribute('aria-expanded', 'false');
                     return;
                   }
 
@@ -1024,14 +1059,21 @@ export function getStaticPaths() {
                   if (toggleCell instanceof HTMLTableCellElement) {
                     toggleCell.colSpan = columnCount;
                   }
+                  const bottomCell = ctx.bottomToggleRow.firstElementChild;
+                  if (bottomCell instanceof HTMLTableCellElement) {
+                    bottomCell.colSpan = columnCount;
+                  }
 
                   const shouldToggle = dataRows.length > 3 && isMobile;
 
                   if (!shouldToggle) {
                     ctx.toggleRow.hidden = true;
+                    ctx.bottomToggleRow.hidden = true;
                     ctx.toggleWrapper.classList.remove('is-expanded');
+                    ctx.bottomToggleWrapper.classList.remove('is-expanded');
                     ctx.expandButton.setAttribute('aria-expanded', 'true');
                     ctx.collapseButton.setAttribute('aria-expanded', 'true');
+                    ctx.bottomCollapseButton.setAttribute('aria-expanded', 'true');
                     dataRows.forEach(row => {
                       row.hidden = false;
                       row.classList.remove('is-collapsed-row');
@@ -1042,9 +1084,12 @@ export function getStaticPaths() {
                   const expanded = Boolean(ctx.state);
                   const expandedValue = expanded ? 'true' : 'false';
                   ctx.toggleRow.hidden = false;
+                  ctx.bottomToggleRow.hidden = !expanded;
                   ctx.toggleWrapper.classList.toggle('is-expanded', expanded);
+                  ctx.bottomToggleWrapper.classList.toggle('is-expanded', expanded);
                   ctx.expandButton.setAttribute('aria-expanded', expandedValue);
                   ctx.collapseButton.setAttribute('aria-expanded', expandedValue);
+                  ctx.bottomCollapseButton.setAttribute('aria-expanded', expandedValue);
 
                   const insertIndex = Math.min(3, dataRows.length);
                   const referenceRow = dataRows[insertIndex] || null;
@@ -1054,6 +1099,15 @@ export function getStaticPaths() {
                     }
                   } else if (ctx.tbody.lastElementChild !== ctx.toggleRow) {
                     ctx.tbody.appendChild(ctx.toggleRow);
+                  }
+
+                  if (expanded) {
+                    const lastData = dataRows[dataRows.length - 1] || null;
+                    if (lastData && lastData.nextElementSibling !== ctx.bottomToggleRow) {
+                      ctx.tbody.insertBefore(ctx.bottomToggleRow, lastData.nextElementSibling);
+                    } else if (!lastData && ctx.tbody.lastElementChild !== ctx.bottomToggleRow) {
+                      ctx.tbody.appendChild(ctx.bottomToggleRow);
+                    }
                   }
 
                   dataRows.forEach((row, index) => {
