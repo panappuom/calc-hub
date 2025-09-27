@@ -251,6 +251,19 @@ function getStoreBadgeClass(store) {
   return 'store-badge';
 }
 
+function getStoreBadgeLabel(store) {
+  if (store === '楽天') {
+    return 'モール 楽天';
+  }
+  if (typeof store === 'string' && store.toLowerCase() === 'yahoo') {
+    return 'モール Yahoo';
+  }
+  if (typeof store === 'string' && store.trim()) {
+    return `モール ${store.trim()}`;
+  }
+  return 'モール';
+}
+
 export function getStaticPaths() {
   return skus.map(s => ({ params: { sku: s.id } }));
 }
@@ -476,7 +489,7 @@ export function getStaticPaths() {
             {allList.length ? (
               <>
                 {hasAllPoints && <button class="sort-toggle">価格順に切替</button>}
-                <table class="price-table" id="price-table-all">
+                <table class="price-table" id="price-table-all" data-tab="all">
                   <thead class="sr-only-mobile">
                     <tr>
                       <th id="col-all-store" scope="col">ストア</th>
@@ -498,21 +511,28 @@ export function getStaticPaths() {
                             data-label="ストア"
                             data-cell="store"
                           >
-                            <span class={getStoreBadgeClass(it.store)}>{it.store}</span>
+                            <span
+                              class={getStoreBadgeClass(it.store)}
+                              aria-label={getStoreBadgeLabel(it.store)}
+                            >
+                              {it.store}
+                            </span>
                           </td>
                           <td headers="col-all-shop" data-label="ショップ" data-cell="shop">
                             <span class="sr-only">ショップ</span>
                             <div class="price-card-head">
                               <div class="badges">
-                                <span class={getStoreBadgeClass(it.store)}>{it.store}</span>
+                                <span
+                                  class={getStoreBadgeClass(it.store)}
+                                  aria-label={getStoreBadgeLabel(it.store)}
+                                >
+                                  {it.store}
+                                </span>
                               </div>
                               <div class="shop-name" title={it.shopName}>
                                 {it.shopName}
                               </div>
                             </div>
-                            <span class="shop-name shop-name--desktop" title={it.shopName}>
-                              {it.shopName}
-                            </span>
                           </td>
                           <td
                             headers="col-all-price"
@@ -560,7 +580,7 @@ export function getStaticPaths() {
               {sec.list.length ? (
               <>
                   {sec.hasPoints && <button class="sort-toggle">価格順に切替</button>}
-                  <table class="price-table">
+                  <table class="price-table" data-tab={sec.key}>
                     <thead class="sr-only-mobile">
                       <tr>
                         <th id={`col-${sec.key}-shop`} scope="col">ショップ</th>
@@ -584,9 +604,6 @@ export function getStaticPaths() {
                                   {it.shopName}
                                 </div>
                               </div>
-                              <span class="shop-name shop-name--desktop" title={it.shopName}>
-                                {it.shopName}
-                              </span>
                             </td>
                             <td
                               headers={`col-${sec.key}-price`}
@@ -648,6 +665,17 @@ export function getStaticPaths() {
           <script>
             const tabButtons = document.querySelectorAll('.tabs button');
             const tabSections = document.querySelectorAll('.tab-content');
+
+            function syncTableDataset(activeTab) {
+              tabSections.forEach(sec => {
+                const table = sec.querySelector('.price-table');
+                if (!table) return;
+                const tab = sec.dataset.tab || '';
+                table.dataset.tab = tab;
+                table.dataset.active = tab === activeTab ? 'true' : 'false';
+              });
+            }
+
             tabButtons.forEach(btn => {
               btn.addEventListener('click', () => {
                 const target = btn.dataset.tab;
@@ -655,8 +683,12 @@ export function getStaticPaths() {
                 tabSections.forEach(sec => {
                   sec.style.display = sec.dataset.tab === target ? '' : 'none';
                 });
+                syncTableDataset(target || '');
               });
             });
+
+            const activeButton = document.querySelector('.tabs button.active');
+            syncTableDataset(activeButton?.dataset?.tab || '');
           </script>
           <script>
             (function () {
@@ -1148,38 +1180,16 @@ export function getStaticPaths() {
               const RANK_LIMIT = 3;
 
               function getBadgeHosts(row) {
-                const hosts = [];
                 const headerHost = row.querySelector('.price-card-head .badges');
                 if (headerHost) {
-                  hosts.push(headerHost);
+                  return [headerHost];
                 }
-                const storeCell = row.querySelector('td[data-cell="store"]');
                 const shopCell = row.querySelector('td[data-cell="shop"]');
-                const table = row.closest('table');
-                const isAllStoresTable = table && table.id === 'price-table-all';
-
-                if (isAllStoresTable && shopCell) {
-                  const desktopHost = shopCell.querySelector('.shop-name--desktop');
-                  if (desktopHost) {
-                    hosts.push(desktopHost);
-                  } else {
-                    hosts.push(shopCell);
-                  }
+                if (shopCell) {
+                  return [shopCell];
                 }
-
-                if (storeCell) {
-                  hosts.push(storeCell);
-                } else if (shopCell) {
-                  hosts.push(shopCell);
-                }
-
-                if (!hosts.length) {
-                  const fallback = row.querySelector('td');
-                  if (fallback) {
-                    hosts.push(fallback);
-                  }
-                }
-                return hosts;
+                const fallback = row.querySelector('td');
+                return fallback ? [fallback] : [];
               }
 
               function clearBadge(row) {
