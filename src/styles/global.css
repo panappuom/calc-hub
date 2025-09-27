@@ -708,11 +708,6 @@ label {
   width: 1%;
 }
 
-.price-table td[data-cell="store"] .rank-badge,
-.price-table td[data-cell="shop"] .rank-badge {
-  margin-right: 8px;
-}
-
 .price-table .shop-name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -725,6 +720,24 @@ label {
 }
 
 .price-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.price-card-head .badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.price-card-head .shop-name {
+  flex: 1;
+  margin: 0;
+}
+
+.price-card-head .store-badge {
   display: none;
 }
 
@@ -850,14 +863,6 @@ label {
     display: none;
   }
 
-  .price-table td[data-cell="shop"] > .rank-badge {
-    display: none;
-  }
-
-  .price-table td[data-cell="shop"] > .shop-name--desktop {
-    display: none;
-  }
-
   .price-card-head {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -870,6 +875,10 @@ label {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+  }
+
+  .price-card-head .store-badge {
+    display: inline-flex;
   }
 
   .price-card-head .shop-name {
