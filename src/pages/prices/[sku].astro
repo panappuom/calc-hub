@@ -529,8 +529,10 @@ export function getStaticPaths() {
                                   {it.store}
                                 </span>
                               </div>
-                              <div class="shop-name" title={it.shopName}>
-                                {it.shopName}
+                              <div class="shop-meta">
+                                <span class="shop-name" title={it.shopName}>
+                                  {it.shopName}
+                                </span>
                               </div>
                             </div>
                           </td>
@@ -600,8 +602,10 @@ export function getStaticPaths() {
                               <span class="sr-only">ショップ</span>
                               <div class="price-card-head">
                                 <div class="badges"></div>
-                                <div class="shop-name" title={it.shopName}>
-                                  {it.shopName}
+                                <div class="shop-meta">
+                                  <span class="shop-name" title={it.shopName}>
+                                    {it.shopName}
+                                  </span>
                                 </div>
                               </div>
                             </td>
@@ -1180,6 +1184,10 @@ export function getStaticPaths() {
               const RANK_LIMIT = 3;
 
               function getBadgeHosts(row) {
+                const metaHost = row.querySelector('.price-card-head .shop-meta');
+                if (metaHost) {
+                  return [metaHost];
+                }
                 const headerHost = row.querySelector('.price-card-head .badges');
                 if (headerHost) {
                   return [headerHost];
