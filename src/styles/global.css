@@ -708,6 +708,25 @@ label {
   width: 1%;
 }
 
+@media (min-width: 769px) {
+  .price-table .rank-badge,
+  .price-table .store-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  .price-table td[data-cell="store"],
+  .price-table td[data-cell="shop"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    vertical-align: middle;
+  }
+}
+
 .price-table .shop-name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
