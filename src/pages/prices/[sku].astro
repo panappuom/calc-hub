@@ -511,16 +511,18 @@ export function getStaticPaths() {
                             data-label="ストア"
                             data-cell="store"
                           >
-                            <span
-                              class={getStoreBadgeClass(it.store)}
-                              aria-label={getStoreBadgeLabel(it.store)}
-                            >
-                              {it.store}
-                            </span>
+                            <div class="store-cell">
+                              <span
+                                class={getStoreBadgeClass(it.store)}
+                                aria-label={getStoreBadgeLabel(it.store)}
+                              >
+                                {it.store}
+                              </span>
+                            </div>
                           </td>
                           <td headers="col-all-shop" data-label="ショップ" data-cell="shop">
                             <span class="sr-only">ショップ</span>
-                            <div class="price-card-head">
+                            <div class="price-card-head shop-meta">
                               <div class="badges">
                                 <span
                                   class={getStoreBadgeClass(it.store)}
@@ -598,7 +600,7 @@ export function getStaticPaths() {
                           <tr data-price={it.price} data-eff={eff}>
                             <td headers={`col-${sec.key}-shop`} data-label="ショップ" data-cell="shop">
                               <span class="sr-only">ショップ</span>
-                              <div class="price-card-head">
+                              <div class="price-card-head shop-meta">
                                 <div class="badges"></div>
                                 <div class="shop-name" title={it.shopName}>
                                   {it.shopName}

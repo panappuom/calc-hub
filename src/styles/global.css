@@ -709,21 +709,43 @@ label {
 }
 
 @media (min-width: 769px) {
+  .price-table td[data-cell="store"],
+  .price-table td[data-cell="shop"] {
+    display: table-cell;
+    vertical-align: middle;
+  }
+
+  .price-table td[data-cell="shop"] .shop-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .price-table td[data-cell="store"] .store-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
   .price-table .rank-badge,
   .price-table .store-badge {
     display: inline-flex;
     align-items: center;
-    height: 28px;
+    justify-content: center;
+    height: 24px;
+    padding: 0 8px;
     line-height: 1;
     vertical-align: middle;
   }
 
-  .price-table td[data-cell="store"],
-  .price-table td[data-cell="shop"] {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    vertical-align: middle;
+  .price-table td[data-cell="action"] {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .price-table td[data-cell="action"] .shop-link-button {
+    display: inline-flex;
   }
 }
 
