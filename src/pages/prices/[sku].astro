@@ -173,6 +173,10 @@ const tieCount = Number.isFinite(bestTodayEffectiveValue)
   : 0;
 const shouldShowTieLink = bestPriceCase === 'tie' && tieCount > 1;
 const showRecommendedCard = hasRecommendedSection && bestPriceCase === 'separate';
+const showPlaceholderCard = hasRecommendedSection && isSamePrice;
+const bestTodayLabel = isSamePrice
+  ? '今日の最安 : 推奨最安（ブランド一致）と同額です。'
+  : '今日の最安';
 
 const bestPriceContext = {
   case: bestPriceCase,
@@ -301,10 +305,7 @@ export function getStaticPaths() {
             <h2 set:html={safeBreak("最安情報")}></h2>
             <div class="best-price-cards" data-bestprice-case={bestPriceCase}>
               <section class="best-price-card" role="region" aria-labelledby="best-today-heading">
-                <p class="best-price-card__label" id="best-today-heading">今日の最安</p>
-                {bestPriceCase === 'merge' && (
-                  <span class="best-price-card__badge" aria-label="推奨最安と同一のため統合表示">推奨最安と一致</span>
-                )}
+                <p class="best-price-card__label" id="best-today-heading">{bestTodayLabel}</p>
                 {bestTodayCard ? (
                   <>
                     <p class="best-price-card__line best-price-card__line--primary">
@@ -334,9 +335,6 @@ export function getStaticPaths() {
                           {bestTodayCard.shopDisplayName} で確認 <span aria-hidden="true">↗</span>
                         </a>
                       </p>
-                    )}
-                    {bestPriceCase === 'merge' && bestRecommendedEvidence && (
-                      <p class="best-price-card__note">{bestRecommendedEvidence}</p>
                     )}
                     {shouldShowTieLink && (
                       <p class="best-price-card__note best-price-card__note--link">
@@ -393,6 +391,8 @@ export function getStaticPaths() {
                     <p class="best-price-card__line best-price-card__line--empty">該当なし</p>
                   )}
                 </section>
+              ) : showPlaceholderCard ? (
+                <section class="best-price-card best-price-card--placeholder" aria-hidden="true"></section>
               ) : null}
             </div>
           </div>
