@@ -171,7 +171,7 @@ const tieSourceList = allList.length ? allList : list;
 const tieCount = Number.isFinite(bestTodayEffectiveValue)
   ? tieSourceList.filter(it => getEffectiveValue(it) === bestTodayEffectiveValue).length
   : 0;
-const shouldShowTieLink = bestPriceCase === 'tie' && tieCount > 1 && !isSamePrice;
+const shouldShowTieLink = bestPriceCase === 'tie' && tieCount > 1;
 const showRecommendedCard = hasRecommendedSection && bestPriceCase === 'separate';
 const showPlaceholderCard = hasRecommendedSection && isSamePrice;
 const bestTodayLabel = isSamePrice
