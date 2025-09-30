@@ -302,6 +302,11 @@ label {
   position: relative;
 }
 
+.best-price-card--placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .best-price-card:focus-within {
   border-color: var(--border-strong);
   box-shadow: 0 0 0 1px var(--border-strong);
