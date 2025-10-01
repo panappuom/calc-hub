@@ -675,7 +675,7 @@ label {
 .price-table td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .price-table td[data-cell="price"],
@@ -721,13 +721,13 @@ label {
   }
 
   .price-table td[data-cell="shop"] .shop-meta {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 8px;
   }
 
   .price-table td[data-cell="store"] .store-cell {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 6px;
     white-space: nowrap;
