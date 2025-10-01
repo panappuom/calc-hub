@@ -667,6 +667,10 @@ label {
   text-align: right;
 }
 
+.price-table thead th[data-column="action"]{
+  text-align: center;
+}
+
 .price-table thead th[data-column="effective"] {
   background: var(--effective-highlight);
 }
