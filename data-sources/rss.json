@@ -1,16 +1,50 @@
 [
   {
-    "label": "公式セール情報",
-    "url": "https://example.com/feed", 
-    "include": ["セール", "割引", "クーポン", "キャンペーン"],
-    "exclude": ["抽選", "求人", "スポンサー募集"],
-    "limit": 20
+    "label": "Google News: 公式セール",
+    "url": "https://news.google.com/rss/search?q=%E5%85%AC%E5%BC%8F+%E3%82%BB%E3%83%BC%E3%83%AB+when:7d&hl=ja&gl=JP&ceid=JP:ja",
+    "include": ["セール", "割引", "無料", "キャンペーン", "特価", "還元", "クーポン"],
+    "exclude": ["抽選", "求人", "採用", "体験記"],
+    "limit": 60,
+    "tags": ["公式", "セール"]
   },
   {
-    "label": "テック系お得情報",
-    "url": "https://example2.com/feed",
-    "include": ["セール", "値下げ", "タイムセール"],
-    "exclude": ["提供:", "PR:"],
-    "limit": 20
+    "label": "Google News: Nintendo",
+    "url": "https://news.google.com/rss/search?q=site:nintendo.co.jp+%28%E3%82%BB%E3%83%BC%E3%83%AB+OR+%E3%82%BB%E3%83%BC%E3%83%AB%E6%83%85%E5%A0%B1+OR+%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3%29+when:7d&hl=ja&gl=JP&ceid=JP:ja",
+    "include": ["セール", "値下げ", "キャンペーン", "無料", "割引"],
+    "exclude": [],
+    "limit": 60,
+    "tags": ["ゲーム", "Nintendo"]
+  },
+  {
+    "label": "Google News: PlayStation",
+    "url": "https://news.google.com/rss/search?q=site:playstation.com+%28%E3%82%BB%E3%83%BC%E3%83%AB+OR+sale+OR+%E5%89%B2%E5%BC%95%29+when:7d&hl=ja&gl=JP&ceid=JP:ja",
+    "include": ["セール", "割引", "キャンペーン", "無料", "特典"],
+    "exclude": [],
+    "limit": 60,
+    "tags": ["ゲーム", "PlayStation"]
+  },
+  {
+    "label": "Google News: Steam",
+    "url": "https://news.google.com/rss/search?q=site:store.steampowered.com+%28sale+OR+%E5%89%B2%E5%BC%95+OR+%E3%82%BB%E3%83%BC%E3%83%AB%29+when:7d&hl=ja&gl=JP&ceid=JP:ja",
+    "include": ["セール", "割引", "無料", "off", "OFF"],
+    "exclude": [],
+    "limit": 60,
+    "tags": ["ゲーム", "PC"]
+  },
+  {
+    "label": "Google News: 楽天公式",
+    "url": "https://news.google.com/rss/search?q=site:rakuten.co.jp+%28%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3+OR+%E3%82%BB%E3%83%BC%E3%83%AB+OR+%E5%89%B2%E5%BC%95%29+when:7d&hl=ja&gl=JP&ceid=JP:ja",
+    "include": ["セール", "割引", "キャンペーン", "クーポン", "ポイント"],
+    "exclude": ["抽選", "採用"],
+    "limit": 60,
+    "tags": ["ショッピング", "楽天"]
+  },
+  {
+    "label": "Google News: モバイル公式",
+    "url": "https://news.google.com/rss/search?q=%28site:kddi.com+OR+site:softbank.jp+OR+site:nttdocomo.co.jp%29+%28%E3%82%BB%E3%83%BC%E3%83%AB+OR+%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3+OR+%E5%89%B2%E5%BC%95%29+when:7d&hl=ja&gl=JP&ceid=JP:ja",
+    "include": ["セール", "割引", "キャンペーン", "還元", "ポイント"],
+    "exclude": ["採用"],
+    "limit": 60,
+    "tags": ["通信", "モバイル"]
   }
 ]
