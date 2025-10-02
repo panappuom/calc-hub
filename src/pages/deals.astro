@@ -5,7 +5,21 @@ import data from "../data/deals.json";
 import { safeBreak } from "../lib/safe-break";
 const BASE_URL = import.meta.env.BASE_URL;
 const items = (data?.items ?? []).slice(0, 100);
-function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
+const dtf = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit"
+});
+function fmt(value){
+  try{
+    return dtf.format(new Date(value));
+  }catch{
+    return value;
+  }
+}
 ---
 <html lang="ja">
   <head>
@@ -23,14 +37,26 @@ function fmt(d){ try{ return new Date(d).toLocaleString(); }catch{ return d; } }
         {items.map((it) => (
           <a
             class="card"
-            href={it.link}
+            href={it.url}
             target="_blank"
             rel="nofollow noopener"
             title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
           >
             <h2 style="margin:0 0 6px 0" set:html={safeBreak(it.title)}></h2>
-            <p class="small jp-copy" style="margin:0 0 6px 0">{it.source} / {fmt(it.date)}</p>
-            {it.description && <p class="jp-copy" style="margin:0">{it.description}</p>}
+            <p class="small jp-copy" style="margin:0 0 6px 0">{it.source} / {fmt(it.publishedAt)}</p>
+            {it.tags?.length > 0 && (
+              <ul class="tag-list small" aria-label="タグ" style="margin:0 0 6px 0; padding:0; display:flex; flex-wrap:wrap; gap:4px; list-style:none;">
+                {it.tags.map((tag) => (
+                  <li
+                    class="tag-chip"
+                    style="background:#f1f5f9; color:#0f172a; border-radius:12px; padding:2px 8px;"
+                  >
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {it.summary && <p class="jp-copy" style="margin:0">{it.summary}</p>}
           </a>
         ))}
       </div>

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json.schemastore.org/package.json", 
+  "$schema": "https://json.schemastore.org/package.json",
   "name": "calc-hub",
   "private": true,
   "type": "module",
@@ -14,12 +14,12 @@
   },
   "dependencies": {
     "astro": "^4.13.0",
-    "fast-xml-parser": "^5.2.5"
+    "fast-xml-parser": "^5.2.5",
+    "undici": "^6.21.3"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
     "http-server": "^14.1.1",
     "playwright": "^1.55.0"
   }
-
 }

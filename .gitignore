@@ -4,6 +4,7 @@ dist/
 .astro/
 .vite/
 .lighthouseci/
+.cache/
 
 # エディタ関連
 .vscode/
