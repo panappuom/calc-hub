@@ -90,12 +90,14 @@ const enrichedItems = items
   .map((it) => {
     const timestamp = toTimestamp(it.publishedAt);
     const combinedTags = new Set([...(it.tags ?? []), ...tagsForSource(it.source)]);
+    const link = buildLink(it.url);
     return {
       ...it,
       tags: [...combinedTags],
       timestamp,
       publishedLabel: fmt(it.publishedAt),
-      isNew: now - timestamp <= DAY_MS
+      isNew: now - timestamp <= DAY_MS,
+      link
     };
   })
   .sort((a, b) => b.timestamp - a.timestamp);
@@ -103,6 +105,48 @@ const enrichedItems = items
 const allTags = Array.from(
   new Set(enrichedItems.flatMap((it) => it.tags ?? []))
 ).sort((a, b) => a.localeCompare(b, "ja"));
+
+const canonicalUrl = Astro.site ? new URL('./deals/', Astro.site).href : undefined;
+
+const dealsStructuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: '今日のセール・割引まとめ',
+  description: '主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は除外。',
+  url: canonicalUrl,
+  numberOfItems: enrichedItems.length,
+  itemListElement: enrichedItems.map((item, index) => {
+    const entry = {
+      '@type': 'ListItem',
+      position: index + 1,
+      url: item.link?.href ?? item.url ?? '',
+      name: item.title ?? ''
+    };
+
+    if (item.summary) {
+      entry.description = item.summary;
+    }
+
+    if (item.publishedAt) {
+      entry.datePublished = item.publishedAt;
+    }
+
+    if (item.source) {
+      entry.publisher = {
+        '@type': 'Organization',
+        name: item.source
+      };
+    }
+
+    if (item.tags?.length) {
+      entry.keywords = item.tags.join(', ');
+    }
+
+    return entry;
+  })
+};
+
+const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
 ---
 <html lang="ja">
   <head>
@@ -110,6 +154,7 @@ const allTags = Array.from(
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <base href={BASE_URL} />
     <title>今日のセール・割引まとめ</title>
+    <script type="application/ld+json" data-schema="deal-list" set:html={dealsSchemaJson}></script>
   </head>
   <body>
     <div class="wrap">
@@ -150,7 +195,6 @@ const allTags = Array.from(
 
       <ul class="deal-list" data-deal-list>
         {enrichedItems.map((it) => {
-          const link = buildLink(it.url);
           const tagList = (it.tags ?? []).filter(Boolean);
           return (
             <li
@@ -161,9 +205,9 @@ const allTags = Array.from(
             >
               <a
                 class="deal-card"
-                href={link.href}
-                target={link.target}
-                rel={link.rel}
+                href={it.link.href}
+                target={it.link.target}
+                rel={it.link.rel}
                 title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
               >
                 <div class="deal-card__header">

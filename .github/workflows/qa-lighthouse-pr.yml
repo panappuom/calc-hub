@@ -94,6 +94,41 @@ jobs:
         if: steps.lighthouse-run.outcome == 'failure'
         run: exit 1
 
+      - name: Run /deals/ QA checks
+        id: deals-qa
+        run: node scripts/run-deals-qa.mjs
+        continue-on-error: true
+
+      - name: Upload /deals/ QA report
+        if: steps.deals-qa.outcome == 'failure' && hashFiles('qa-deals-report.md') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: deals-qa-report
+          path: qa-deals-report.md
+
+      - name: Comment on PR when /deals/ QA fails
+        if: steps.deals-qa.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const reportPath = path.join(process.env.GITHUB_WORKSPACE, 'qa-deals-report.md');
+            let body = 'QA checks failed for /deals/.';
+            if (fs.existsSync(reportPath)) {
+              body += `\n\n${fs.readFileSync(reportPath, 'utf8')}`;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
+
+      - name: Ensure /deals/ QA succeeded
+        if: steps.deals-qa.outcome == 'failure'
+        run: exit 1
+
       - name: Upload Lighthouse artifacts
         if: always()
         uses: actions/upload-artifact@v4
