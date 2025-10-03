@@ -2,10 +2,13 @@
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
 import data from "../data/deals.json";
+import rssSources from "../../data-sources/rss.json";
 import { safeBreak } from "../lib/safe-break";
 import { buildLink } from "../../scripts/link-builder.mjs";
+
 const BASE_URL = import.meta.env.BASE_URL;
 const items = (data?.items ?? []).slice(0, 100);
+
 const dtf = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
   year: "numeric",
@@ -14,13 +17,92 @@ const dtf = new Intl.DateTimeFormat("ja-JP", {
   hour: "2-digit",
   minute: "2-digit"
 });
-function fmt(value){
-  try{
+
+function fmt(value) {
+  try {
     return dtf.format(new Date(value));
-  }catch{
+  } catch {
     return value;
   }
 }
+
+function normalizeHost(host = "") {
+  return host.toLowerCase().replace(/^www\./, "");
+}
+
+function extractSourceHints(feedUrl = "") {
+  const hints = new Set();
+  try {
+    const url = new URL(feedUrl);
+    if (url.hostname && url.hostname !== "news.google.com") {
+      hints.add(normalizeHost(url.hostname));
+    }
+  } catch {
+    /* noop */
+  }
+  const matches = feedUrl.matchAll(/site:([a-z0-9.-]+)/gi);
+  for (const match of matches) {
+    const host = match?.[1];
+    if (host) {
+      hints.add(normalizeHost(host));
+    }
+  }
+  return [...hints];
+}
+
+const sourceTagMap = new Map();
+for (const feed of rssSources ?? []) {
+  const tags = Array.isArray(feed?.tags) ? feed.tags : [];
+  if (!tags.length) continue;
+  const hints = extractSourceHints(feed?.url ?? "");
+  hints.forEach((hint) => {
+    const existing = sourceTagMap.get(hint) ?? new Set();
+    tags.forEach((tag) => existing.add(tag));
+    sourceTagMap.set(hint, existing);
+  });
+}
+
+function tagsForSource(source = "") {
+  const host = normalizeHost(source);
+  if (!host) return [];
+  const segments = host.split(".");
+  for (let i = 0; i < segments.length - 1; i += 1) {
+    const candidate = segments.slice(i).join(".");
+    const result = sourceTagMap.get(candidate);
+    if (result) {
+      return [...result];
+    }
+  }
+  return [];
+}
+
+function toTimestamp(value) {
+  const d = new Date(value);
+  const t = d.getTime();
+  if (Number.isNaN(t)) return Date.now();
+  return t;
+}
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+const now = Date.now();
+
+const enrichedItems = items
+  .map((it) => {
+    const timestamp = toTimestamp(it.publishedAt);
+    const combinedTags = new Set([...(it.tags ?? []), ...tagsForSource(it.source)]);
+    return {
+      ...it,
+      tags: [...combinedTags],
+      timestamp,
+      publishedLabel: fmt(it.publishedAt),
+      isNew: now - timestamp <= DAY_MS
+    };
+  })
+  .sort((a, b) => b.timestamp - a.timestamp);
+
+const allTags = Array.from(
+  new Set(enrichedItems.flatMap((it) => it.tags ?? []))
+).sort((a, b) => a.localeCompare(b, "ja"));
 ---
 <html lang="ja">
   <head>
@@ -34,37 +116,169 @@ function fmt(value){
       <a href="./" class="small">← トップ</a>
       <h1 set:html={safeBreak("今日のセール・割引まとめ")}></h1>
       <p class="small jp-copy">主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は除外。</p>
-      <div class="grid" style="margin-top:8px">
-        {items.map((it) => {
+
+      <section class="deal-controls" aria-label="並び順とタグフィルタ">
+        <div class="deal-sort" role="group" aria-label="並び順">
+          <button type="button" class="deal-sort__button is-active" data-sort-button data-sort="new" aria-pressed="true">
+            新着順
+          </button>
+          <button
+            type="button"
+            class="deal-sort__button"
+            data-sort-button
+            data-sort="popular"
+            aria-pressed="false"
+            aria-disabled="true"
+            title="人気順は近日公開予定"
+          >
+            人気（クリック数）
+          </button>
+        </div>
+        <div class="deal-filter">
+          <p class="deal-filter__label">タグで絞り込み</p>
+          <div class="deal-filter__chips">
+            {allTags.map((tag) => (
+              <button type="button" class="deal-tag" data-tag-filter data-tag={tag} aria-pressed="false">
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <p class="small jp-copy" data-deal-count>{`全${enrichedItems.length}件`}</p>
+
+      <ul class="deal-list" data-deal-list>
+        {enrichedItems.map((it) => {
           const link = buildLink(it.url);
+          const tagList = (it.tags ?? []).filter(Boolean);
           return (
-            <a
-              class="card"
-              href={link.href}
-              target={link.target}
-              rel={link.rel}
-              title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
+            <li
+              class="deal-list__item"
+              data-deal-item
+              data-tags={tagList.join("|")}
+              data-timestamp={it.timestamp}
             >
-              <h2 style="margin:0 0 6px 0" set:html={safeBreak(it.title)}></h2>
-              <p class="small jp-copy" style="margin:0 0 6px 0">{it.source} / {fmt(it.publishedAt)}</p>
-              {it.tags?.length > 0 && (
-                <ul class="tag-list small" aria-label="タグ" style="margin:0 0 6px 0; padding:0; display:flex; flex-wrap:wrap; gap:4px; list-style:none;">
-                  {it.tags.map((tag) => (
-                    <li
-                      class="tag-chip"
-                      style="background:#f1f5f9; color:#0f172a; border-radius:12px; padding:2px 8px;"
-                    >
-                      {tag}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {it.summary && <p class="jp-copy" style="margin:0">{it.summary}</p>}
-            </a>
+              <a
+                class="deal-card"
+                href={link.href}
+                target={link.target}
+                rel={link.rel}
+                title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
+              >
+                <div class="deal-card__header">
+                  <div class="deal-card__badge-row">
+                    {it.isNew && <span class="deal-badge" aria-label="24時間以内に追加">新着</span>}
+                    <span class="deal-card__domain">{it.source}</span>
+                  </div>
+                  <h2 class="deal-card__title" set:html={safeBreak(it.title)}></h2>
+                </div>
+                <div class="deal-card__meta">
+                  <time dateTime={it.publishedAt}>{it.publishedLabel}</time>
+                </div>
+                {tagList.length > 0 && (
+                  <ul class="deal-card__tags" aria-label="タグ">
+                    {tagList.map((tag) => (
+                      <li class="deal-card__tag">{tag}</li>
+                    ))}
+                  </ul>
+                )}
+                {it.summary && <p class="deal-card__summary jp-copy">{it.summary}</p>}
+              </a>
+            </li>
           );
         })}
-      </div>
-      <p class="small jp-copy" style="margin-top:8px">価格・在庫は変動します。最新情報はリンク先でご確認ください。</p>
+      </ul>
+      <noscript>
+        <p class="small jp-copy">タグフィルタを利用するにはJavaScriptを有効にしてください。</p>
+      </noscript>
+
+      <p class="small jp-copy" style="margin-top:16px">価格・在庫は変動します。最新情報はリンク先でご確認ください。</p>
+
+      <script type="module">
+        const list = document.querySelector("[data-deal-list]");
+        const countEl = document.querySelector("[data-deal-count]");
+        const sortButtons = Array.from(document.querySelectorAll("[data-sort-button]"));
+        const tagButtons = Array.from(document.querySelectorAll("[data-tag-filter]"));
+
+        const items = list
+          ? Array.from(list.querySelectorAll("[data-deal-item]")).map((el) => ({
+              el,
+              tags: (el.dataset.tags || "").split("|").filter(Boolean),
+              timestamp: Number.parseInt(el.dataset.timestamp || "0", 10) || 0
+            }))
+          : [];
+
+        let activeSort = "new";
+        const activeTags = new Set();
+
+        const formatCount = (visible) => {
+          if (!countEl) return;
+          const total = items.length;
+          if (visible === total || activeTags.size === 0) {
+            countEl.textContent = `全${total}件`;
+          } else {
+            countEl.textContent = `${visible}件を表示中`;
+          }
+        };
+
+        const applySort = () => {
+          if (!list) return;
+          if (activeSort === "new") {
+            items.sort((a, b) => b.timestamp - a.timestamp);
+          }
+          items.forEach(({ el }) => list.appendChild(el));
+        };
+
+        const applyFilters = () => {
+          let visibleCount = 0;
+          const selected = Array.from(activeTags.values());
+          items.forEach((item) => {
+            const matches = selected.length === 0 || selected.some((tag) => item.tags.includes(tag));
+            if (matches) {
+              item.el.removeAttribute("hidden");
+              visibleCount += 1;
+            } else {
+              item.el.setAttribute("hidden", "");
+            }
+          });
+          formatCount(visibleCount);
+        };
+
+        sortButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            if (button.getAttribute("aria-disabled") === "true") return;
+            const sort = button.dataset.sort;
+            if (!sort || sort === activeSort) return;
+            activeSort = sort;
+            sortButtons.forEach((btn) => {
+              const isActive = btn === button;
+              btn.classList.toggle("is-active", isActive);
+              btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+            });
+            applySort();
+          });
+        });
+
+        tagButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            const tag = button.dataset.tag;
+            if (!tag) return;
+            const pressed = button.getAttribute("aria-pressed") === "true";
+            if (pressed) {
+              activeTags.delete(tag);
+            } else {
+              activeTags.add(tag);
+            }
+            button.setAttribute("aria-pressed", pressed ? "false" : "true");
+            button.classList.toggle("is-active", !pressed);
+            applyFilters();
+          });
+        });
+
+        applySort();
+        applyFilters();
+      </script>
     </div>
     <Footer />
   </body>
