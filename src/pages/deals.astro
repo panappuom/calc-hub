@@ -116,27 +116,40 @@ const dealsStructuredData = {
   url: canonicalUrl,
   numberOfItems: enrichedItems.length,
   itemListElement: enrichedItems.map((item, index) => {
-    const entry = {
-      '@type': 'ListItem',
-      position: index + 1,
-      url: item.link?.href ?? item.url ?? '',
-      name: item.title ?? ''
+    const url = item.link?.href ?? item.url ?? '';
+    const article = {
+      '@type': 'NewsArticle',
+      name: item.title ?? '',
+      headline: item.title ?? '',
+      url
     };
 
     if (item.summary) {
-      entry.description = item.summary;
+      article.description = item.summary;
     }
 
     if (item.publishedAt) {
-      entry.datePublished = item.publishedAt;
+      article.datePublished = item.publishedAt;
+    }
+
+    if (item.image) {
+      article.image = item.image;
     }
 
     if (item.source) {
-      entry.publisher = {
+      article.publisher = {
         '@type': 'Organization',
         name: item.source
       };
     }
+
+    const entry = {
+      '@type': 'ListItem',
+      position: index + 1,
+      url,
+      name: item.title ?? '',
+      item: article
+    };
 
     if (item.tags?.length) {
       entry.keywords = item.tags.join(', ');
