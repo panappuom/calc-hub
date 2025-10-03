@@ -3,6 +3,7 @@ import "../styles/global.css";
 import Footer from "../components/Footer.astro";
 import data from "../data/deals.json";
 import { safeBreak } from "../lib/safe-break";
+import { buildLink } from "../../scripts/link-builder.mjs";
 const BASE_URL = import.meta.env.BASE_URL;
 const items = (data?.items ?? []).slice(0, 100);
 const dtf = new Intl.DateTimeFormat("ja-JP", {
@@ -34,31 +35,34 @@ function fmt(value){
       <h1 set:html={safeBreak("今日のセール・割引まとめ")}></h1>
       <p class="small jp-copy">主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は除外。</p>
       <div class="grid" style="margin-top:8px">
-        {items.map((it) => (
-          <a
-            class="card"
-            href={it.url}
-            target="_blank"
-            rel="nofollow noopener"
-            title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
-          >
-            <h2 style="margin:0 0 6px 0" set:html={safeBreak(it.title)}></h2>
-            <p class="small jp-copy" style="margin:0 0 6px 0">{it.source} / {fmt(it.publishedAt)}</p>
-            {it.tags?.length > 0 && (
-              <ul class="tag-list small" aria-label="タグ" style="margin:0 0 6px 0; padding:0; display:flex; flex-wrap:wrap; gap:4px; list-style:none;">
-                {it.tags.map((tag) => (
-                  <li
-                    class="tag-chip"
-                    style="background:#f1f5f9; color:#0f172a; border-radius:12px; padding:2px 8px;"
-                  >
-                    {tag}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {it.summary && <p class="jp-copy" style="margin:0">{it.summary}</p>}
-          </a>
-        ))}
+        {items.map((it) => {
+          const link = buildLink(it.url);
+          return (
+            <a
+              class="card"
+              href={link.href}
+              target={link.target}
+              rel={link.rel}
+              title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
+            >
+              <h2 style="margin:0 0 6px 0" set:html={safeBreak(it.title)}></h2>
+              <p class="small jp-copy" style="margin:0 0 6px 0">{it.source} / {fmt(it.publishedAt)}</p>
+              {it.tags?.length > 0 && (
+                <ul class="tag-list small" aria-label="タグ" style="margin:0 0 6px 0; padding:0; display:flex; flex-wrap:wrap; gap:4px; list-style:none;">
+                  {it.tags.map((tag) => (
+                    <li
+                      class="tag-chip"
+                      style="background:#f1f5f9; color:#0f172a; border-radius:12px; padding:2px 8px;"
+                    >
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {it.summary && <p class="jp-copy" style="margin:0">{it.summary}</p>}
+            </a>
+          );
+        })}
       </div>
       <p class="small jp-copy" style="margin-top:8px">価格・在庫は変動します。最新情報はリンク先でご確認ください。</p>
     </div>

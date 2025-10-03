@@ -1,0 +1,14 @@
+{
+  "rakuten.co.jp": {
+    "append": {
+      "scid": "af_calc-hub",
+      "utm_source": "calc-hub",
+      "utm_medium": "deals"
+    }
+  },
+  "amazon.co.jp": {
+    "append": {
+      "tag": "calchub-22"
+    }
+  }
+}
