@@ -117,26 +117,46 @@ const dealsStructuredData = {
   numberOfItems: enrichedItems.length,
   itemListElement: enrichedItems.map((item, index) => {
     const url = item.link?.href ?? item.url ?? '';
-    const article = {
-      '@type': 'NewsArticle',
-      name: item.title ?? '',
-      headline: item.title ?? '',
-      url
-    };
+    const hasNewsArticleRequirements = Boolean(
+      item.image && item.source && item.publishedAt
+    );
+
+    const article = hasNewsArticleRequirements
+      ? {
+          '@type': 'NewsArticle',
+          name: item.title ?? '',
+          headline: item.title ?? '',
+          url,
+          datePublished: item.publishedAt,
+          image: item.image,
+          author: {
+            '@type': 'Organization',
+            name: item.source
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: item.source
+          }
+        }
+      : {
+          '@type': 'WebPage',
+          name: item.title ?? '',
+          url
+        };
 
     if (item.summary) {
       article.description = item.summary;
     }
 
-    if (item.publishedAt) {
+    if (item.publishedAt && !article.datePublished) {
       article.datePublished = item.publishedAt;
     }
 
-    if (item.image) {
+    if (item.image && !article.image) {
       article.image = item.image;
     }
 
-    if (item.source) {
+    if (item.source && !article.publisher) {
       article.publisher = {
         '@type': 'Organization',
         name: item.source
