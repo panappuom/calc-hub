@@ -116,27 +116,60 @@ const dealsStructuredData = {
   url: canonicalUrl,
   numberOfItems: enrichedItems.length,
   itemListElement: enrichedItems.map((item, index) => {
-    const entry = {
-      '@type': 'ListItem',
-      position: index + 1,
-      url: item.link?.href ?? item.url ?? '',
-      name: item.title ?? ''
-    };
+    const url = item.link?.href ?? item.url ?? '';
+    const hasNewsArticleRequirements = Boolean(
+      item.image && item.source && item.publishedAt
+    );
+
+    const article = hasNewsArticleRequirements
+      ? {
+          '@type': 'NewsArticle',
+          name: item.title ?? '',
+          headline: item.title ?? '',
+          url,
+          datePublished: item.publishedAt,
+          image: item.image,
+          author: {
+            '@type': 'Organization',
+            name: item.source
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: item.source
+          }
+        }
+      : {
+          '@type': 'WebPage',
+          name: item.title ?? '',
+          url
+        };
 
     if (item.summary) {
-      entry.description = item.summary;
+      article.description = item.summary;
     }
 
-    if (item.publishedAt) {
-      entry.datePublished = item.publishedAt;
+    if (item.publishedAt && !article.datePublished) {
+      article.datePublished = item.publishedAt;
     }
 
-    if (item.source) {
-      entry.publisher = {
+    if (item.image && !article.image) {
+      article.image = item.image;
+    }
+
+    if (item.source && !article.publisher) {
+      article.publisher = {
         '@type': 'Organization',
         name: item.source
       };
     }
+
+    const entry = {
+      '@type': 'ListItem',
+      position: index + 1,
+      url,
+      name: item.title ?? '',
+      item: article
+    };
 
     if (item.tags?.length) {
       entry.keywords = item.tags.join(', ');
