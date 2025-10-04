@@ -44,6 +44,7 @@ function writeReport(result) {
     formatIssues('rel attribute on affiliate links', result.relIssues),
     formatIssues('Affiliate link href format', result.hrefIssues),
     formatIssues('Structured data schema', result.schemaIssues),
+    formatIssues('Analytics attributes and tracking', result.analyticsIssues),
     '',
     '## Metrics',
     `- deal card count: ${result.dealCardCount}`,
@@ -75,6 +76,7 @@ const evaluation = await page.evaluate(() => {
   const relIssues = [];
   const hrefIssues = [];
   const schemaIssues = [];
+  const analyticsIssues = [];
 
   const dealLinks = Array.from(document.querySelectorAll('a.deal-card'));
 
@@ -91,6 +93,15 @@ const evaluation = await page.evaluate(() => {
     const href = link.getAttribute('href') || '';
     if (!/^https?:\/\//i.test(href)) {
       hrefIssues.push(`Expected absolute URL for deal link but received "${href}".`);
+    }
+
+    const analyticsName = link.getAttribute('data-analytics') || '';
+    if (analyticsName !== 'deal_click') {
+      analyticsIssues.push('Deal link is missing data-analytics="deal_click" attribute.');
+    }
+    const payload = link.getAttribute('data-analytics-payload') || '';
+    if (!payload) {
+      analyticsIssues.push('Deal link is missing data-analytics-payload attribute.');
     }
   }
 
@@ -152,10 +163,27 @@ const evaluation = await page.evaluate(() => {
     }
   }
 
+  const plausibleCalls = [];
+  window.plausible = (...args) => {
+    plausibleCalls.push(args);
+  };
+
+  const firstLink = dealLinks[0];
+  if (firstLink) {
+    firstLink.addEventListener('click', (event) => event.preventDefault(), { once: true });
+    firstLink.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    if (!plausibleCalls.length) {
+      analyticsIssues.push('window.plausible was not called when clicking the first deal card.');
+    }
+  } else {
+    analyticsIssues.push('No deal links found for analytics verification.');
+  }
+
   return {
     relIssues,
     hrefIssues,
     schemaIssues,
+    analyticsIssues,
     dealCardCount: dealLinks.length,
     schemaItemCount,
     schemaSample,
@@ -164,7 +192,7 @@ const evaluation = await page.evaluate(() => {
 
 await browser.close();
 
-const hasIssues = evaluation.relIssues.length || evaluation.hrefIssues.length || evaluation.schemaIssues.length;
+const hasIssues = evaluation.relIssues.length || evaluation.hrefIssues.length || evaluation.schemaIssues.length || evaluation.analyticsIssues.length;
 
 if (hasIssues) {
   writeReport(evaluation);

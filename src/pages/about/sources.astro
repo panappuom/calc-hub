@@ -1,8 +1,11 @@
 ---
 import "../../styles/global.css";
+import AnalyticsRuntime from "../../components/AnalyticsRuntime.astro";
 import Footer from "../../components/Footer.astro";
+import { getAnalyticsScriptConfig } from "../../lib/analytics";
 import { safeBreak } from "../../lib/safe-break";
 const BASE_URL = import.meta.env.BASE_URL;
+const analyticsScript = getAnalyticsScriptConfig();
 ---
 <html lang="ja">
   <head>
@@ -10,6 +13,9 @@ const BASE_URL = import.meta.env.BASE_URL;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <base href={BASE_URL} />
     <title>データ出典と更新について</title>
+    {analyticsScript && (
+      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
+    )}
   </head>
   <body>
     <div class="wrap">
@@ -26,5 +32,6 @@ const BASE_URL = import.meta.env.BASE_URL;
       <p class="small jp-copy">解析や取得方法など技術的な詳細は予告なく調整される場合があります。</p>
     </div>
     <Footer />
+    <AnalyticsRuntime />
   </body>
 </html>

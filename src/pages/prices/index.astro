@@ -1,9 +1,12 @@
 ---
 import "../../styles/global.css";
+import AnalyticsRuntime from "../../components/AnalyticsRuntime.astro";
 import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
+import { getAnalyticsScriptConfig } from "../../lib/analytics";
 import { safeBreak } from "../../lib/safe-break";
 const BASE_URL = import.meta.env.BASE_URL;
+const analyticsScript = getAnalyticsScriptConfig();
 
 let data;
 let sourceStatus = "fail";
@@ -35,6 +38,9 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <base href={BASE_URL} />
     <title>今日の最安“候補”</title>
+    {analyticsScript && (
+      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
+    )}
   </head>
   <body>
     <div class="wrap">
@@ -54,12 +60,25 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
           <p class="small jp-copy">取得日時: {new Date(data.updatedAt).toLocaleString('ja-JP')}</p>
           {data.sourceStatus && <p class="small jp-copy">対象ストア: 楽天市場、Yahoo!ショッピング</p>}
           <ul>
-            {data.items.map(it => (
-              <li>
-                <a href={`prices/${it.skuId}/`}>{skuMap[it.skuId]?.q ?? it.skuId}</a>
-                : {it.bestPrice}円 ({it.bestShop})
-              </li>
-            ))}
+            {data.items.map((it, index) => {
+              const analyticsPayload = JSON.stringify({
+                sku: it.skuId,
+                rank: index + 1,
+                from_page: "/prices/",
+              });
+              return (
+                <li>
+                  <a
+                    href={`prices/${it.skuId}/`}
+                    data-analytics="sku_card_click"
+                    data-analytics-payload={analyticsPayload}
+                  >
+                    {skuMap[it.skuId]?.q ?? it.skuId}
+                  </a>
+                  : {it.bestPrice}円 ({it.bestShop})
+                </li>
+              );
+            })}
           </ul>
         </>
       ) : (
@@ -67,5 +86,6 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
       )}
     </div>
     <Footer />
+    <AnalyticsRuntime />
   </body>
 </html>

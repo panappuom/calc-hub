@@ -1,11 +1,14 @@
 ---
 import "../../styles/global.css";
+import AnalyticsRuntime from "../../components/AnalyticsRuntime.astro";
 import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
+import { getAnalyticsScriptConfig } from "../../lib/analytics";
 import { safeBreak } from "../../lib/safe-break";
 const IS_DEV = import.meta.env.DEV;
 const BASE_URL = import.meta.env.BASE_URL;
 const clientGlobalsScript = `window.__APP_DEV__ = ${JSON.stringify(IS_DEV)};\nwindow.__BASE_URL__ = ${JSON.stringify(BASE_URL)};`;
+const analyticsScript = getAnalyticsScriptConfig();
 
 let data;
 let rakutenData;
@@ -155,6 +158,8 @@ if (bestRecommended) {
 }
 const bestTodayCard = getPriceCardModel(bestToday, { prefix: '最安' });
 const bestRecommendedCard = getPriceCardModel(bestRecommended, { prefix: '推奨' });
+const bestTodayAnalyticsPayload = buildPriceAnalyticsPayload(bestToday, bestToday?.store);
+const bestRecommendedAnalyticsPayload = buildPriceAnalyticsPayload(bestRecommended, bestRecommended?.store);
 
 const hasRecommendedSection = Boolean(skuInfo?.brandHints?.length);
 const bestTodayEffectiveValue = getEffectiveValue(bestToday);
@@ -210,6 +215,52 @@ function truncateShopName(name, maxLength = 20) {
     return name;
   }
   return `${name.slice(0, maxLength)}…`;
+}
+
+function buildPriceAnalyticsPayload(item, storeHint) {
+  if (!item) return null;
+
+  const payload = {
+    sku,
+  };
+
+  const storeValue = typeof item.store === 'string' && item.store.trim()
+    ? item.store.trim()
+    : (typeof storeHint === 'string' && storeHint.trim() ? storeHint.trim() : undefined);
+  if (storeValue) {
+    payload.store = storeValue;
+  }
+
+  if (item.shopName) {
+    payload.shop_name = item.shopName;
+  }
+
+  const priceValue = Number(item.price);
+  if (Number.isFinite(priceValue)) {
+    payload.price = priceValue;
+  }
+
+  const effectiveValue = getEffectivePriceValue(item);
+  if (Number.isFinite(effectiveValue)) {
+    payload.effective_price = effectiveValue;
+  }
+
+  const targetUrl = typeof item.itemUrl === 'string' ? item.itemUrl : '';
+  if (targetUrl) {
+    try {
+      const url = new URL(targetUrl);
+      const source = url.searchParams.get('utm_source');
+      const medium = url.searchParams.get('utm_medium');
+      const campaign = url.searchParams.get('utm_campaign');
+      if (source) payload.utm_source = source;
+      if (medium) payload.utm_medium = medium;
+      if (campaign) payload.utm_campaign = campaign;
+    } catch {
+      /* noop */
+    }
+  }
+
+  return JSON.stringify(payload);
 }
 
 function getPriceCardModel(item, { prefix }) {
@@ -279,6 +330,9 @@ export function getStaticPaths() {
     <base href={BASE_URL} />
     <script is:inline set:html={clientGlobalsScript}></script>
     <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
+    {analyticsScript && (
+      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
+    )}
   </head>
 <body data-sku={sku}>
     <div class="wrap">
@@ -331,6 +385,8 @@ export function getStaticPaths() {
                           class="best-price-card__link"
                           title={bestTodayCard.shopTitle}
                           aria-label={getShopLinkDescription(bestTodayCard.shopName || bestTodayCard.shopDisplayName)}
+                          data-analytics={bestTodayAnalyticsPayload ? "price_click" : undefined}
+                          data-analytics-payload={bestTodayAnalyticsPayload ?? undefined}
                         >
                           {bestTodayCard.shopDisplayName} で確認 <span aria-hidden="true">↗</span>
                         </a>
@@ -372,20 +428,22 @@ export function getStaticPaths() {
                           )}
                         </p>
                       )}
-                      {bestRecommendedCard.itemUrl && (
-                        <p class="best-price-card__line best-price-card__line--link">
-                          <a
-                            href={bestRecommendedCard.itemUrl}
-                            target="_blank"
-                            rel="nofollow noopener"
-                            class="best-price-card__link"
-                            title={bestRecommendedCard.shopTitle}
-                            aria-label={getShopLinkDescription(bestRecommendedCard.shopName || bestRecommendedCard.shopDisplayName)}
-                          >
-                            {bestRecommendedCard.shopDisplayName} で確認 <span aria-hidden="true">↗</span>
-                          </a>
-                        </p>
-                      )}
+                    {bestRecommendedCard.itemUrl && ( 
+                      <p class="best-price-card__line best-price-card__line--link">
+                        <a
+                          href={bestRecommendedCard.itemUrl}
+                          target="_blank"
+                          rel="nofollow noopener"
+                          class="best-price-card__link"
+                          title={bestRecommendedCard.shopTitle}
+                          aria-label={getShopLinkDescription(bestRecommendedCard.shopName || bestRecommendedCard.shopDisplayName)}
+                          data-analytics={bestRecommendedAnalyticsPayload ? "price_click" : undefined}
+                          data-analytics-payload={bestRecommendedAnalyticsPayload ?? undefined}
+                        >
+                          {bestRecommendedCard.shopDisplayName} で確認 <span aria-hidden="true">↗</span>
+                        </a>
+                      </p>
+                    )}
                     </>
                   ) : (
                     <p class="best-price-card__line best-price-card__line--empty">該当なし</p>
@@ -504,6 +562,7 @@ export function getStaticPaths() {
                     {allList.map(it => {
                       const eff = Number.isFinite(it.effective) ? it.effective : getEffectivePriceValue(it);
                       const hasPointRate = Number(it.pointRate ?? 0) > 0;
+                      const analyticsPayload = buildPriceAnalyticsPayload(it, it.store);
                       return (
                         <tr class="has-store-badge" data-price={it.price} data-eff={eff}>
                           <td
@@ -558,6 +617,8 @@ export function getStaticPaths() {
                               rel="nofollow noopener"
                               title={getShopLinkDescription(it.shopName)}
                               aria-label={getShopLinkDescription(it.shopName)}
+                              data-analytics={analyticsPayload ? "price_click" : undefined}
+                              data-analytics-payload={analyticsPayload ?? undefined}
                             >
                               ショップで確認
                               <span aria-hidden="true" class="external-link-icon">↗</span>
@@ -596,6 +657,7 @@ export function getStaticPaths() {
                       {sec.list.map(it => {
                         const eff = Number.isFinite(it.effective) ? it.effective : getEffectivePriceValue(it);
                         const hasPointRate = Number(it.pointRate ?? 0) > 0;
+                        const analyticsPayload = buildPriceAnalyticsPayload(it, sec.name);
                         return (
                           <tr data-price={it.price} data-eff={eff}>
                             <td headers={`col-${sec.key}-shop`} data-label="ショップ" data-cell="shop">
@@ -629,6 +691,8 @@ export function getStaticPaths() {
                                 rel="nofollow noopener"
                                 title={getShopLinkDescription(it.shopName)}
                                 aria-label={getShopLinkDescription(it.shopName)}
+                                data-analytics={analyticsPayload ? "price_click" : undefined}
+                                data-analytics-payload={analyticsPayload ?? undefined}
                               >
                                 ショップで確認
                                 <span aria-hidden="true" class="external-link-icon">↗</span>
@@ -2259,5 +2323,6 @@ export function getStaticPaths() {
       )}
     </div>
     <Footer />
+    <AnalyticsRuntime />
   </body>
 </html>
