@@ -1,13 +1,16 @@
 ---
 import "../styles/global.css";
+import AnalyticsRuntime from "../components/AnalyticsRuntime.astro";
 import Footer from "../components/Footer.astro";
 import data from "../data/deals.json";
 import rssSources from "../../data-sources/rss.json";
+import { getAnalyticsScriptConfig } from "../lib/analytics";
 import { safeBreak } from "../lib/safe-break";
 import { buildLink } from "../../scripts/link-builder.mjs";
 
 const BASE_URL = import.meta.env.BASE_URL;
 const items = (data?.items ?? []).slice(0, 100);
+const analyticsScript = getAnalyticsScriptConfig();
 
 const dtf = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
@@ -81,6 +84,36 @@ function toTimestamp(value) {
   const t = d.getTime();
   if (Number.isNaN(t)) return Date.now();
   return t;
+}
+
+function toAnalyticsPayload(item, index, tagList) {
+  const payload = {
+    url: item.link?.href ?? item.url ?? "",
+    source_domain: "",
+    tags: tagList.join(","),
+    position: index + 1,
+  };
+
+  try {
+    const url = new URL(item.url ?? item.link?.href ?? "");
+    payload.source_domain = url.hostname ?? "";
+  } catch {
+    payload.source_domain = "";
+  }
+
+  try {
+    const trackingUrl = new URL(item.link?.href ?? "");
+    const source = trackingUrl.searchParams.get("utm_source");
+    const medium = trackingUrl.searchParams.get("utm_medium");
+    const campaign = trackingUrl.searchParams.get("utm_campaign");
+    if (source) payload.utm_source = source;
+    if (medium) payload.utm_medium = medium;
+    if (campaign) payload.utm_campaign = campaign;
+  } catch {
+    /* noop */
+  }
+
+  return JSON.stringify(payload);
 }
 
 const DAY_MS = 1000 * 60 * 60 * 24;
@@ -188,6 +221,9 @@ const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
     <base href={BASE_URL} />
     <title>今日のセール・割引まとめ</title>
     <script type="application/ld+json" data-schema="deal-list" set:html={dealsSchemaJson}></script>
+    {analyticsScript && (
+      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
+    )}
   </head>
   <body>
     <div class="wrap">
@@ -227,8 +263,9 @@ const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
       <p class="small jp-copy" data-deal-count>{`全${enrichedItems.length}件`}</p>
 
       <ul class="deal-list" data-deal-list>
-        {enrichedItems.map((it) => {
+        {enrichedItems.map((it, index) => {
           const tagList = (it.tags ?? []).filter(Boolean);
+          const analyticsPayload = toAnalyticsPayload(it, index, tagList);
           return (
             <li
               class="deal-list__item"
@@ -242,6 +279,8 @@ const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
                 target={it.link.target}
                 rel={it.link.rel}
                 title={`${it.source}で詳細を確認できます（新しいタブが開きます）`}
+                data-analytics="deal_click"
+                data-analytics-payload={analyticsPayload}
               >
                 <div class="deal-card__header">
                   <div class="deal-card__badge-row">
@@ -358,5 +397,6 @@ const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
       </script>
     </div>
     <Footer />
+    <AnalyticsRuntime />
   </body>
 </html>

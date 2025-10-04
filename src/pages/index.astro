@@ -1,8 +1,11 @@
 ---
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
+import AnalyticsRuntime from "../components/AnalyticsRuntime.astro";
+import { getAnalyticsScriptConfig } from "../lib/analytics";
 import { safeBreak } from "../lib/safe-break";
 const BASE_URL = import.meta.env.BASE_URL;
+const analyticsScript = getAnalyticsScriptConfig();
 const tools = [
   {
     href: "calculators/",
@@ -30,6 +33,9 @@ const tools = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <base href={BASE_URL} />
     <title>なんでも計算室＆お得チェッカー</title>
+    {analyticsScript && (
+      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
+    )}
   </head>
   <body>
     <div class="wrap">
@@ -48,5 +54,6 @@ const tools = [
       </div>
     </div>
     <Footer />
+    <AnalyticsRuntime />
   </body>
 </html>
