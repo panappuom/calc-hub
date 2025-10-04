@@ -163,7 +163,11 @@ const evaluation = await page.evaluate(() => {
     }
   }
 
+  const analyticsScript = document.querySelector('script[data-domain][src]');
+  const analyticsEnabled = Boolean(analyticsScript);
+
   const plausibleCalls = [];
+  const originalPlausible = window.plausible;
   window.plausible = (...args) => {
     plausibleCalls.push(args);
   };
@@ -172,12 +176,14 @@ const evaluation = await page.evaluate(() => {
   if (firstLink) {
     firstLink.addEventListener('click', (event) => event.preventDefault(), { once: true });
     firstLink.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    if (!plausibleCalls.length) {
+    if (analyticsEnabled && !plausibleCalls.length) {
       analyticsIssues.push('window.plausible was not called when clicking the first deal card.');
     }
   } else {
     analyticsIssues.push('No deal links found for analytics verification.');
   }
+
+  window.plausible = originalPlausible;
 
   return {
     relIssues,
