@@ -6,6 +6,7 @@ import data from "../data/deals.json";
 import rssSources from "../../data-sources/rss.json";
 import { getAnalyticsScriptConfig } from "../lib/analytics";
 import { safeBreak } from "../lib/safe-break";
+import { guessSkuFromDeal } from "../lib/sku-map.mjs";
 import { buildLink } from "../../scripts/link-builder.mjs";
 
 const BASE_URL = import.meta.env.BASE_URL;
@@ -124,13 +125,29 @@ const enrichedItems = items
     const timestamp = toTimestamp(it.publishedAt);
     const combinedTags = new Set([...(it.tags ?? []), ...tagsForSource(it.source)]);
     const link = buildLink(it.url);
+    let sourceDomain = "";
+    try {
+      const url = new URL(it.url ?? it.link?.href ?? "");
+      sourceDomain = url.hostname ?? "";
+    } catch {
+      sourceDomain = it.source ?? "";
+    }
+    const tagList = [...combinedTags];
+    const sku = guessSkuFromDeal({
+      title: it.title ?? "",
+      summary: it.summary ?? "",
+      tags: tagList,
+      source: sourceDomain || it.source || "",
+    });
     return {
       ...it,
-      tags: [...combinedTags],
+      tags: tagList,
       timestamp,
       publishedLabel: fmt(it.publishedAt),
       isNew: now - timestamp <= DAY_MS,
-      link
+      link,
+      sourceDomain,
+      sku,
     };
   })
   .sort((a, b) => b.timestamp - a.timestamp);
@@ -266,6 +283,13 @@ const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
         {enrichedItems.map((it, index) => {
           const tagList = (it.tags ?? []).filter(Boolean);
           const analyticsPayload = toAnalyticsPayload(it, index, tagList);
+          const dealToPricePayload = it.sku
+            ? JSON.stringify({
+                sku: it.sku,
+                source_domain: it.sourceDomain ?? "",
+                index: index + 1,
+              })
+            : null;
           return (
             <li
               class="deal-list__item"
@@ -301,6 +325,18 @@ const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
                 )}
                 {it.summary && <p class="deal-card__summary jp-copy">{it.summary}</p>}
               </a>
+              {it.sku && (
+                <div class="deal-card__actions">
+                  <a
+                    class="deal-card__action"
+                    href={`./prices/${it.sku}/`}
+                    data-analytics="deal_to_price"
+                    data-analytics-payload={dealToPricePayload ?? undefined}
+                  >
+                    このSKUの価格を見る
+                  </a>
+                </div>
+              )}
             </li>
           );
         })}

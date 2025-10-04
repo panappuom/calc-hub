@@ -5,6 +5,8 @@ import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
 import { getAnalyticsScriptConfig } from "../../lib/analytics";
 import { safeBreak } from "../../lib/safe-break";
+import { isDealRelatedToSku } from "../../lib/sku-map.mjs";
+import { buildLink } from "../../../scripts/link-builder.mjs";
 const IS_DEV = import.meta.env.DEV;
 const BASE_URL = import.meta.env.BASE_URL;
 const clientGlobalsScript = `window.__APP_DEV__ = ${JSON.stringify(IS_DEV)};\nwindow.__BASE_URL__ = ${JSON.stringify(BASE_URL)};`;
@@ -13,6 +15,7 @@ const analyticsScript = getAnalyticsScriptConfig();
 let data;
 let rakutenData;
 let yahooData;
+let dealsFeed;
 try {
   const url = new URL(
     BASE_URL + "data/prices/today.json",
@@ -43,9 +46,111 @@ try {
     yahooData = await res.json();
   }
 } catch {}
+try {
+  const url = new URL(
+    BASE_URL + "data/deals.json",
+    Astro.site
+  );
+  const res = await fetch(url);
+  if (res.ok) {
+    dealsFeed = await res.json();
+  }
+} catch {}
 const { sku } = Astro.params;
 const skuInfo = skus.find(s => s.id === sku);
 const priceInfo = data?.items?.find(i => i.skuId === sku);
+const dealsItems = Array.isArray(dealsFeed?.items) ? dealsFeed.items : [];
+
+const dealDateFormatter = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatDealDate(value) {
+  try {
+    return dealDateFormatter.format(new Date(value));
+  } catch {
+    return value ?? "";
+  }
+}
+
+function toDealTimestamp(value) {
+  const d = new Date(value);
+  const t = d.getTime();
+  return Number.isFinite(t) ? t : Date.now();
+}
+
+function getDealSourceDomain(item) {
+  try {
+    const url = new URL(item?.url ?? item?.link?.href ?? "");
+    return url.hostname ?? "";
+  } catch {
+    return item?.source ?? "";
+  }
+}
+
+function buildDealAnalyticsPayload(item, index, tagList) {
+  const payload = {
+    url: item.link?.href ?? item.url ?? "",
+    source_domain: "",
+    tags: tagList.join(","),
+    position: index + 1,
+  };
+
+  try {
+    const url = new URL(item.url ?? item.link?.href ?? "");
+    payload.source_domain = url.hostname ?? "";
+  } catch {
+    payload.source_domain = item.sourceDomain ?? "";
+  }
+
+  try {
+    const trackingUrl = new URL(item.link?.href ?? "");
+    const source = trackingUrl.searchParams.get("utm_source");
+    const medium = trackingUrl.searchParams.get("utm_medium");
+    const campaign = trackingUrl.searchParams.get("utm_campaign");
+    if (source) payload.utm_source = source;
+    if (medium) payload.utm_medium = medium;
+    if (campaign) payload.utm_campaign = campaign;
+  } catch {
+    /* noop */
+  }
+
+  return JSON.stringify(payload);
+}
+
+const relatedDeals = dealsItems
+  .map((item) => {
+    const timestamp = toDealTimestamp(item.publishedAt);
+    const link = buildLink(item.url);
+    const tagList = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
+    const sourceDomain = getDealSourceDomain(item);
+    return {
+      ...item,
+      tagList,
+      timestamp,
+      link,
+      sourceDomain,
+      publishedLabel: formatDealDate(item.publishedAt),
+    };
+  })
+  .filter((item) =>
+    isDealRelatedToSku(
+      {
+        title: item.title ?? "",
+        summary: item.summary ?? "",
+        tags: item.tagList,
+        source: item.sourceDomain ?? "",
+      },
+      sku
+    )
+  )
+  .sort((a, b) => b.timestamp - a.timestamp)
+  .slice(0, 3);
 function getEffectivePriceValue(it) {
   const price = Number(it?.price);
   if (!Number.isFinite(price)) {
@@ -344,6 +449,47 @@ export function getStaticPaths() {
           ? `取得日時: ${new Date(data.updatedAt).toLocaleString('ja-JP')}`
           : 'データ少'}
       </p>
+      {relatedDeals.length > 0 && (
+        <section class="related-deals" aria-label="関連Deals">
+          <h2 class="related-deals__heading">関連Deals</h2>
+          <ul class="related-deals__list">
+            {relatedDeals.map((deal, index) => {
+              const tagList = (deal.tagList ?? []).filter(Boolean);
+              const analyticsPayload = buildDealAnalyticsPayload(deal, index, tagList);
+              const sourceLabel = deal.source ?? deal.sourceDomain ?? "外部サイト";
+              return (
+                <li class="related-deals__item">
+                  <a
+                    class="related-deal-card"
+                    href={deal.link.href}
+                    target={deal.link.target}
+                    rel={deal.link.rel}
+                    title={`${sourceLabel}で詳細を確認できます（新しいタブが開きます）`}
+                    data-analytics="deal_click"
+                    data-analytics-payload={analyticsPayload}
+                  >
+                    <p class="related-deal-card__source">{sourceLabel}</p>
+                    <h3 class="related-deal-card__title" set:html={safeBreak(deal.title)}></h3>
+                    <div class="related-deal-card__meta">
+                      <time dateTime={deal.publishedAt}>{deal.publishedLabel}</time>
+                    </div>
+                    {tagList.length > 0 && (
+                      <ul class="related-deal-card__tags" aria-label="タグ">
+                        {tagList.slice(0, 6).map((tag) => (
+                          <li class="related-deal-card__tag">{tag}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {deal.summary && (
+                      <p class="related-deal-card__summary jp-copy">{deal.summary}</p>
+                    )}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       {skuInfo && (
         <div>
           <h2 set:html={safeBreak("仕様")}></h2>
