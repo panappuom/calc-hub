@@ -1,14 +1,8 @@
 ---
 // 先頭に追加
-import { getAnalyticsScriptConfig, isAnalyticsEnabled } from '../lib/analytics';
+import { isAnalyticsEnabled } from '../lib/analytics';
 import runtimeUrl from '../scripts/analytics-runtime.ts?url';
 
-const cfg = getAnalyticsScriptConfig();
 const enabled = isAnalyticsEnabled();
 ---
-{cfg && (
-  <script defer data-domain={cfg.domain} src={cfg.src}></script>
-)}
-{enabled && (
-  <script type="module" src={runtimeUrl}></script>
-)}
+{enabled && <script type="module" src={runtimeUrl}></script>}

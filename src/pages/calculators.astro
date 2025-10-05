@@ -1,21 +1,13 @@
 ---
-import "../styles/global.css";
+import Layout from "../layouts/Layout.astro";
 import Footer from "../components/Footer.astro";
 import { safeBreak } from "../lib/safe-break";
-const BASE_URL = import.meta.env.BASE_URL;
 ---
-<html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <base href={BASE_URL} />
-    <title>なんでも計算室</title>
-  </head>
-  <body>
-    <div class="wrap">
-      <a href="./" class="small">← トップ</a>
-      <h1 set:html={safeBreak("なんでも計算室")}></h1>
-      <div class="grid">
+<Layout title="なんでも計算室">
+  <div class="wrap">
+    <a href="./" class="small">← トップ</a>
+    <h1 set:html={safeBreak("なんでも計算室")}></h1>
+    <div class="grid">
 
         <div class="card">
           <h2 set:html={safeBreak("税込↔税抜")}></h2>
@@ -55,10 +47,10 @@ const BASE_URL = import.meta.env.BASE_URL;
           <div class="result" id="r5"></div>
         </div>
 
-      </div>
     </div>
-    <Footer />
-    <script>
+  </div>
+  <Footer />
+  <script>
       const $ = (s) => document.querySelector(s);
 
       function fmt(n){ return Number.isFinite(n) ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : "-"; }
@@ -114,6 +106,5 @@ const BASE_URL = import.meta.env.BASE_URL;
         $("#r5").textContent = `${fmt(kcal)} kcal / ${fmt(kj)} kJ`;
       }
       ["#val5","#u5"].forEach(id=>$(id).addEventListener("input",calc5)); calc5();
-    </script>
-  </body>
-</html>
+  </script>
+</Layout>

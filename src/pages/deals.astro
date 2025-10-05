@@ -1,17 +1,14 @@
 ---
-import "../styles/global.css";
+import Layout from "../layouts/Layout.astro";
 import AnalyticsRuntime from "../components/AnalyticsRuntime.astro";
 import Footer from "../components/Footer.astro";
 import data from "../data/deals.json";
 import rssSources from "../../data-sources/rss.json";
-import { getAnalyticsScriptConfig } from "../lib/analytics";
 import { safeBreak } from "../lib/safe-break";
 import { guessSkuFromDeal } from "../lib/sku-map.mjs";
 import { buildLink } from "../../scripts/link-builder.mjs";
 
-const BASE_URL = import.meta.env.BASE_URL;
 const items = (data?.items ?? []).slice(0, 100);
-const analyticsScript = getAnalyticsScriptConfig();
 
 const dtf = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
@@ -231,19 +228,11 @@ const dealsStructuredData = {
 
 const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
 ---
-<html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <base href={BASE_URL} />
-    <title>今日のセール・割引まとめ</title>
+<Layout title="今日のセール・割引まとめ">
+  <Fragment slot="head">
     <script type="application/ld+json" data-schema="deal-list" set:html={dealsSchemaJson}></script>
-    {analyticsScript && (
-      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
-    )}
-  </head>
-  <body>
-    <div class="wrap">
+  </Fragment>
+  <div class="wrap">
       <a href="./" class="small">← トップ</a>
       <h1 set:html={safeBreak("今日のセール・割引まとめ")}></h1>
       <p class="small jp-copy">主要サイトの公式情報から毎日自動で集めています。ノイズ（求人・PR等）は除外。</p>
@@ -431,8 +420,7 @@ const dealsSchemaJson = JSON.stringify(dealsStructuredData, null, 2);
         applySort();
         applyFilters();
       </script>
-    </div>
-    <Footer />
-    <AnalyticsRuntime />
-  </body>
-</html>
+  </div>
+  <Footer />
+  <AnalyticsRuntime />
+</Layout>
