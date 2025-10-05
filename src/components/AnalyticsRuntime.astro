@@ -1,3 +1,14 @@
 ---
+// 先頭に追加
+import { getAnalyticsScriptConfig, isAnalyticsEnabled } from '../lib/analytics';
+import runtimeUrl from '../scripts/analytics-runtime.ts?url';
+
+const cfg = getAnalyticsScriptConfig();
+const enabled = isAnalyticsEnabled();
 ---
-<script type="module" src={Astro.resolve('../scripts/analytics-runtime.ts')}></script>
+{cfg && (
+  <script defer data-domain={cfg.domain} src={cfg.src}></script>
+)}
+{enabled && (
+  <script type="module" src={runtimeUrl}></script>
+)}
