@@ -1,10 +1,3 @@
 ---
-import { getAnalyticsScriptConfig } from '../lib/analytics';
-
-const analyticsConfig = getAnalyticsScriptConfig();
 ---
-
-{analyticsConfig && (
-  <script defer data-domain={analyticsConfig.domain} src={analyticsConfig.src}></script>
-)}
 <script type="module" src={Astro.resolve('../scripts/analytics-runtime.ts')}></script>
