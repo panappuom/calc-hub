@@ -1,29 +1,14 @@
-<script type="module">
-  import { send } from '../lib/analytics';
+---
+// 先頭に追加
+import { getAnalyticsScriptConfig, isAnalyticsEnabled } from '../lib/analytics';
+import runtimeUrl from '../scripts/analytics-runtime.ts?url';
 
-  const parsePayload = (value) => {
-    if (!value) return undefined;
-    try {
-      return JSON.parse(value);
-    } catch {
-      return undefined;
-    }
-  };
-
-  const attach = (element) => {
-    if (!element) return;
-    if (element.dataset.analyticsBound === '1') return;
-    element.addEventListener('click', () => {
-      const eventName = element.getAttribute('data-analytics');
-      if (!eventName) {
-        return;
-      }
-      const payload = parsePayload(element.getAttribute('data-analytics-payload'));
-      send(eventName, payload);
-    });
-    element.dataset.analyticsBound = '1';
-  };
-
-  const elements = Array.from(document.querySelectorAll('[data-analytics]'));
-  elements.forEach((element) => attach(element));
-</script>
+const cfg = getAnalyticsScriptConfig();
+const enabled = isAnalyticsEnabled();
+---
+{cfg && (
+  <script defer data-domain={cfg.domain} src={cfg.src}></script>
+)}
+{enabled && (
+  <script type="module" src={runtimeUrl}></script>
+)}
