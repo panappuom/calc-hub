@@ -1,0 +1,27 @@
+---
+import '../styles/global.css';
+import { getAnalyticsScriptConfig } from '../lib/analytics';
+
+export interface Props {
+  title?: string;
+}
+
+const { title }: Props = Astro.props;
+const BASE_URL = import.meta.env.BASE_URL;
+const analyticsScript = getAnalyticsScriptConfig();
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href={BASE_URL} />
+    {title && <title>{title}</title>}
+    <slot name="head" />
+    {analyticsScript && (
+      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
+    )}
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
