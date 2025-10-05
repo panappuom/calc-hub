@@ -1,29 +1,10 @@
-<script type="module">
-  import { send } from '../lib/analytics';
+---
+import { getAnalyticsScriptConfig } from '../lib/analytics';
 
-  const parsePayload = (value) => {
-    if (!value) return undefined;
-    try {
-      return JSON.parse(value);
-    } catch {
-      return undefined;
-    }
-  };
+const analyticsConfig = getAnalyticsScriptConfig();
+---
 
-  const attach = (element) => {
-    if (!element) return;
-    if (element.dataset.analyticsBound === '1') return;
-    element.addEventListener('click', () => {
-      const eventName = element.getAttribute('data-analytics');
-      if (!eventName) {
-        return;
-      }
-      const payload = parsePayload(element.getAttribute('data-analytics-payload'));
-      send(eventName, payload);
-    });
-    element.dataset.analyticsBound = '1';
-  };
-
-  const elements = Array.from(document.querySelectorAll('[data-analytics]'));
-  elements.forEach((element) => attach(element));
-</script>
+{analyticsConfig && (
+  <script defer data-domain={analyticsConfig.domain} src={analyticsConfig.src}></script>
+)}
+<script type="module" src={Astro.resolve('../scripts/analytics-runtime.ts')}></script>
