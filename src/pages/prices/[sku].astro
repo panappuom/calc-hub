@@ -923,6 +923,7 @@ export function getStaticPaths() {
               id="chart"
               class="chart"
               data-sku={sku}
+              data-today-min-effective={Number.isFinite(bestTodayEffectiveValue) ? String(bestTodayEffectiveValue) : undefined}
               tabindex="0"
               aria-label="過去30日の価格推移。左右キーでポイントを移動できます。"
             ></canvas>
@@ -1610,6 +1611,19 @@ export function getStaticPaths() {
               const normalizedPathname = rawPathname.replace(/\/+$/, '');
               const pathnameSku = normalizedPathname.slice(normalizedPathname.lastIndexOf('/') + 1);
               const sku = datasetSku || pathnameSku || '';
+              const todayMinEffectiveRaw = Number(canvas.dataset?.todayMinEffective);
+              const today = {
+                minEffective: Number.isFinite(todayMinEffectiveRaw) ? todayMinEffectiveRaw : null,
+              };
+              const chart = {
+                latest: null,
+              };
+              if (typeof window !== 'undefined') {
+                const previous = typeof window.__PRICE_CHART__ === 'object' && window.__PRICE_CHART__
+                  ? window.__PRICE_CHART__
+                  : {};
+                window.__PRICE_CHART__ = { ...previous, chart, today, sku };
+              }
               let chartData = null;
               let chartLayout = null;
               let pendingFrame = null;
@@ -1810,7 +1824,7 @@ export function getStaticPaths() {
                 const priceText = formatYen(datum.price);
                 tooltip.innerHTML = `
                   <div class="chart-tooltip__date">${dateText}</div>
-                  <div class="chart-tooltip__price">${priceText}</div>
+                  <div class="chart-tooltip__price">実質 ${priceText}</div>
                 `;
                 if (chartWrap && canvas) {
                   const containerRect = chartWrap.getBoundingClientRect();
@@ -1873,10 +1887,10 @@ export function getStaticPaths() {
                   }
                   const chipTexts = [
                     periodChip,
-                    `最安 ${formatYen(minItem.price)}${minDateText ? ` (${minDateText})` : ''}`,
-                    `最高 ${formatYen(maxItem.price)}${maxDateText ? ` (${maxDateText})` : ''}`,
-                    `平均 ${formatYen(avg)}`,
-                    `最新 ${formatYen(latest.price)}`,
+                    `最安 実質${formatYen(minItem.price)}${minDateText ? ` (${minDateText})` : ''}`,
+                    `最高 実質${formatYen(maxItem.price)}${maxDateText ? ` (${maxDateText})` : ''}`,
+                    `平均 実質${formatYen(avg)}`,
+                    `最新 実質${formatYen(latest.price)}`,
                   ].filter(Boolean);
                   chipTexts.forEach(text => {
                     const chip = document.createElement('span');
@@ -1896,10 +1910,10 @@ export function getStaticPaths() {
                     srParts.push(`期間${periodEnd}。`);
                   }
                   const statsParts = [
-                    `最安${formatYen(minItem.price)}${minDateText ? `（${minDateText}）` : ''}`,
-                    `最高${formatYen(maxItem.price)}${maxDateText ? `（${maxDateText}）` : ''}`,
-                    `平均${formatYen(avg)}`,
-                    `最新${formatYen(latest.price)}`,
+                    `最安実質${formatYen(minItem.price)}${minDateText ? `（${minDateText}）` : ''}`,
+                    `最高実質${formatYen(maxItem.price)}${maxDateText ? `（${maxDateText}）` : ''}`,
+                    `平均実質${formatYen(avg)}`,
+                    `最新実質${formatYen(latest.price)}`,
                   ];
                   srParts.push(`${statsParts.join('、')}。`);
                   summaryA11y.textContent = srParts.join('');
@@ -1916,6 +1930,7 @@ export function getStaticPaths() {
                 }
                 clearTooltip();
                 chartLayout = null;
+                chart.latest = null;
                 hoverIndex = null;
                 pinnedIndex = null;
                 if (summaryVisual) {
@@ -1994,7 +2009,7 @@ export function getStaticPaths() {
                     && now.getFullYear() === lastDate.getFullYear()
                     && now.getMonth() === lastDate.getMonth()
                     && now.getDate() === lastDate.getDate();
-                  const badgeLabel = `${isToday ? '本日' : '最新'} ${formatYen(lastDatum.price)}`;
+                  const badgeLabel = `${isToday ? '本日' : '最新'} 実質${formatYen(lastDatum.price)}`;
                   const badgeWidthCss = ctx.measureText(badgeLabel).width / dpr;
                   const markerRadiusCss = 5;
                   badgeAvoidRightCss = Math.max(0, badgeWidthCss + 8 + markerRadiusCss);
@@ -2236,7 +2251,7 @@ export function getStaticPaths() {
                     && now.getFullYear() === lastDate.getFullYear()
                     && now.getMonth() === lastDate.getMonth()
                     && now.getDate() === lastDate.getDate();
-                  const badgeLabel = `${isToday ? '本日' : '最新'} ${formatYen(lastDatum.price)}`;
+                  const badgeLabel = `${isToday ? '本日' : '最新'} 実質${formatYen(lastDatum.price)}`;
                   const badgePaddingX = 8 * dpr;
                   const badgePaddingY = 4 * dpr;
                   ctx.font = `${12 * dpr}px "system-ui", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
@@ -2476,15 +2491,39 @@ export function getStaticPaths() {
                     return;
                   }
                   const hist = await res.json();
-                  const list = Array.isArray(hist) ? hist : Object.values(hist).find(Array.isArray) || [];
+                  const histObject = hist && typeof hist === 'object' && !Array.isArray(hist) ? hist : null;
+                  const meta = histObject?.meta ?? histObject?.history?.meta ?? null;
+                  const valueType = typeof meta?.valueType === 'string' ? meta.valueType : '';
+                  const list = Array.isArray(hist)
+                    ? hist
+                    : Array.isArray(histObject?.history)
+                      ? histObject.history
+                      : Object.values(histObject || {}).find(Array.isArray) || [];
                   const filtered = list
                     .map(item => {
-                      const price = Number(item?.price);
                       const date = item?.date;
-                      if (!Number.isFinite(price) || !date) {
+                      if (!date) {
                         return null;
                       }
-                      return { date, price };
+                      const rawMetaValue = valueType === 'effectivePrice'
+                        ? Number(item?.value ?? item?.price)
+                        : Number.NaN;
+                      const rawEffectiveField = Number(
+                        item?.effectivePrice ?? item?.effective_price ?? item?.effective,
+                      );
+                      const rawPriceField = Number(item?.price ?? item?.value);
+                      let value = Number.NaN;
+                      if (Number.isFinite(rawMetaValue)) {
+                        value = rawMetaValue;
+                      } else if (Number.isFinite(rawEffectiveField)) {
+                        value = rawEffectiveField;
+                      } else if (Number.isFinite(rawPriceField)) {
+                        value = rawPriceField;
+                      }
+                      if (!Number.isFinite(value)) {
+                        return null;
+                      }
+                      return { date, price: value };
                     })
                     .filter(Boolean)
                     .sort((a, b) => {
@@ -2498,12 +2537,27 @@ export function getStaticPaths() {
                     return;
                   }
                   chartData = filtered;
+                  const latestValue = chartData.length
+                    ? Number(chartData[chartData.length - 1]?.price)
+                    : Number.NaN;
+                  chart.latest = Number.isFinite(latestValue) ? latestValue : null;
                   canvas.style.display = '';
                   msg.textContent = '';
                   if (chartWrap) {
                     setLoading(false);
                   }
                   updateSummary();
+                  if (isDebugMode && Number.isFinite(chart.latest) && Number.isFinite(today.minEffective)) {
+                    if (chart.latest !== today.minEffective) {
+                      const mismatchText = `chart.latest ${formatYen(chart.latest)} ≠ today.minEffective ${formatYen(today.minEffective)}`;
+                      appendDebug(`⚠️ ${mismatchText}`);
+                      console.error(mismatchText, {
+                        chartLatest: chart.latest,
+                        todayMinEffective: today.minEffective,
+                        sku: currentSku,
+                      });
+                    }
+                  }
                   showDebug(url.toString());
                   renderChart(currentSku);
                 } catch (err) {
