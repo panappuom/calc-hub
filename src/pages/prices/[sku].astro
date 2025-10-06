@@ -498,7 +498,7 @@ export function getStaticPaths() {
       <script type="application/ld+json" is:inline set:html={productStructuredDataScript}></script>
     )}
   </head>
-<body data-sku={sku}>
+<body data-sku={sku} data-brand-hints={skuInfo?.brandHints ? JSON.stringify(skuInfo.brandHints) : undefined}>
     <div class="wrap">
         <a href="./" class="small">← トップ</a>
       <h1 set:html={safeBreak(`${skuInfo ? skuInfo.q : sku} – 価格一覧`)}></h1>
@@ -562,7 +562,12 @@ export function getStaticPaths() {
         <>
           <div class="best-price">
             <h2 set:html={safeBreak("最安情報")}></h2>
-            <div class="best-price-cards" data-bestprice-case={bestPriceCase}>
+            <div
+              class="best-price-cards"
+              data-bestprice-case={bestPriceCase}
+              data-header-today={Number.isFinite(bestTodayEffectiveValue) ? String(bestTodayEffectiveValue) : undefined}
+              data-header-recommended={Number.isFinite(bestRecommendedEffectiveValue) ? String(bestRecommendedEffectiveValue) : undefined}
+            >
               <section class="best-price-card" role="region" aria-labelledby="best-today-heading">
                 <p class="best-price-card__label" id="best-today-heading">{bestTodayLabel}</p>
                 {bestTodayCard ? (
@@ -766,10 +771,24 @@ export function getStaticPaths() {
                   <tbody>
                     {allList.map(it => {
                       const eff = Number.isFinite(it.effective) ? it.effective : getEffectivePriceValue(it);
-                      const hasPointRate = Number(it.pointRate ?? 0) > 0;
+                      const priceValue = Number(it.price);
+                      const pointRateValue = Number(it.pointRate);
+                      const hasPointRate = Number.isFinite(pointRateValue) ? pointRateValue > 0 : false;
                       const analyticsPayload = buildPriceAnalyticsPayload(it, it.store);
+                      const storeAttr = typeof it.store === 'string' ? it.store : undefined;
+                      const shopAttr = typeof it.shopName === 'string' ? it.shopName : undefined;
+                      const titleAttr = typeof it.title === 'string' ? it.title : undefined;
                       return (
-                        <tr class="has-store-badge" data-price={it.price} data-eff={eff}>
+                        <tr
+                          class="has-store-badge"
+                          data-price={Number.isFinite(priceValue) ? String(priceValue) : undefined}
+                          data-eff={Number.isFinite(eff) ? String(eff) : undefined}
+                          data-point-rate={Number.isFinite(pointRateValue) ? String(pointRateValue) : undefined}
+                          data-store={storeAttr}
+                          data-shop={shopAttr}
+                          data-title={titleAttr}
+                          data-brand-match={it.brandMatch ? '1' : undefined}
+                        >
                           <td
                             headers="col-all-store"
                             data-label="ストア"
@@ -859,12 +878,25 @@ export function getStaticPaths() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sec.list.map(it => {
-                        const eff = Number.isFinite(it.effective) ? it.effective : getEffectivePriceValue(it);
-                        const hasPointRate = Number(it.pointRate ?? 0) > 0;
-                        const analyticsPayload = buildPriceAnalyticsPayload(it, sec.name);
-                        return (
-                          <tr data-price={it.price} data-eff={eff}>
+                    {sec.list.map(it => {
+                      const eff = Number.isFinite(it.effective) ? it.effective : getEffectivePriceValue(it);
+                      const priceValue = Number(it.price);
+                      const pointRateValue = Number(it.pointRate);
+                      const hasPointRate = Number.isFinite(pointRateValue) ? pointRateValue > 0 : false;
+                      const analyticsPayload = buildPriceAnalyticsPayload(it, sec.name);
+                      const storeAttr = typeof it.store === 'string' ? it.store : sec.name;
+                      const shopAttr = typeof it.shopName === 'string' ? it.shopName : undefined;
+                      const titleAttr = typeof it.title === 'string' ? it.title : undefined;
+                      return (
+                        <tr
+                          data-price={Number.isFinite(priceValue) ? String(priceValue) : undefined}
+                          data-eff={Number.isFinite(eff) ? String(eff) : undefined}
+                          data-point-rate={Number.isFinite(pointRateValue) ? String(pointRateValue) : undefined}
+                          data-store={storeAttr}
+                          data-shop={shopAttr}
+                          data-title={titleAttr}
+                          data-brand-match={it.brandMatch ? '1' : undefined}
+                        >
                             <td headers={`col-${sec.key}-shop`} data-label="ショップ" data-cell="shop">
                               <span class="sr-only">ショップ</span>
                               <div class="price-card-head shop-meta">
@@ -1681,6 +1713,218 @@ export function getStaticPaths() {
                 return currencyFormatter.format(Math.round(num));
               }
 
+              const auditState = {
+                header: { today: null, recommended: null },
+                todaySample: [],
+                minAll: null,
+                minRecommended: null,
+                chartLatest: null,
+              };
+              const triggeredInvariants = new Set();
+
+              function parseNumberAttr(value) {
+                if (value == null || value === '') {
+                  return null;
+                }
+                const num = Number(value);
+                return Number.isFinite(num) ? num : null;
+              }
+
+              function isFiniteNumber(value) {
+                return typeof value === 'number' && Number.isFinite(value);
+              }
+
+              function readHeaderFromDom() {
+                const container = document.querySelector('.best-price-cards');
+                const todayValue = parseNumberAttr(container?.dataset?.headerToday);
+                const recommendedValue = parseNumberAttr(container?.dataset?.headerRecommended);
+                return { today: todayValue, recommended: recommendedValue };
+              }
+
+              function readBrandHints() {
+                const raw = document.body?.dataset?.brandHints || '';
+                if (!raw) {
+                  return [];
+                }
+                try {
+                  const parsed = JSON.parse(raw);
+                  if (Array.isArray(parsed)) {
+                    return parsed
+                      .map(item => (typeof item === 'string' ? item.toLowerCase() : ''))
+                      .filter(Boolean);
+                  }
+                } catch (error) {
+                  console.warn('failed to parse brand hints', { error, raw });
+                }
+                return [];
+              }
+
+              function collectAllRows() {
+                const table = document.getElementById('price-table-all');
+                if (!table) return [];
+                return Array.from(table.querySelectorAll('tbody tr')).filter(
+                  row => !row.classList.contains('table-collapse-toggle-row'),
+                );
+              }
+
+              function getCellText(row, selector) {
+                const element = row ? row.querySelector(selector) : null;
+                if (!element || typeof element.textContent !== 'string') {
+                  return '';
+                }
+                return element.textContent.trim();
+              }
+
+              function extractRowData(row, brandHints) {
+                if (!row) {
+                  return {
+                    mall: '',
+                    shop: '',
+                    price: null,
+                    points: null,
+                    effectivePrice: null,
+                    brandMatched: false,
+                  };
+                }
+                const { dataset } = row;
+                const price = parseNumberAttr(dataset?.price);
+                const effectivePrice = parseNumberAttr(dataset?.eff);
+                const points = parseNumberAttr(dataset?.pointRate);
+                const brandAttr = dataset?.brandMatch ?? '';
+                let brandMatched = false;
+                if (typeof brandAttr === 'string' && brandAttr) {
+                  const lowered = brandAttr.toLowerCase();
+                  if (lowered === '1' || lowered === 'true') {
+                    brandMatched = true;
+                  } else if (lowered === '0' || lowered === 'false') {
+                    brandMatched = false;
+                  }
+                }
+                if (!brandMatched && !brandAttr) {
+                  const title = typeof dataset?.title === 'string' ? dataset.title.toLowerCase() : '';
+                  if (title && Array.isArray(brandHints) && brandHints.length) {
+                    brandMatched = brandHints.some(hint => title.includes(hint));
+                  }
+                }
+                const mall = dataset?.store || getCellText(row, 'td[data-cell="store"]');
+                const shop = dataset?.shop
+                  || getCellText(row, '.shop-name')
+                  || getCellText(row, 'td[data-cell="shop"]');
+                return {
+                  mall,
+                  shop,
+                  price,
+                  points,
+                  effectivePrice,
+                  brandMatched,
+                };
+              }
+
+              function computeAuditSnapshot() {
+                auditState.header = readHeaderFromDom();
+                const brandHints = readBrandHints();
+                const rows = collectAllRows();
+                const sample = [];
+                let minAll = Number.POSITIVE_INFINITY;
+                let minRecommended = Number.POSITIVE_INFINITY;
+                rows.forEach((row, index) => {
+                  const entry = extractRowData(row, brandHints);
+                  if (index < 5) {
+                    sample.push(entry);
+                  }
+                  if (isFiniteNumber(entry.effectivePrice) && entry.effectivePrice < minAll) {
+                    minAll = entry.effectivePrice;
+                  }
+                  if (entry.brandMatched && isFiniteNumber(entry.effectivePrice) && entry.effectivePrice < minRecommended) {
+                    minRecommended = entry.effectivePrice;
+                  }
+                });
+                auditState.todaySample = sample;
+                auditState.minAll = Number.isFinite(minAll) ? minAll : null;
+                auditState.minRecommended = Number.isFinite(minRecommended) ? minRecommended : null;
+                if (!isFiniteNumber(auditState.minRecommended) && isFiniteNumber(auditState.header.recommended)) {
+                  auditState.minRecommended = auditState.header.recommended;
+                }
+              }
+
+              function reportAuditSnapshot() {
+                if (!isDebugMode) {
+                  return;
+                }
+                if (auditState.todaySample.length) {
+                  console.table(auditState.todaySample);
+                } else {
+                  console.log('today sample: none');
+                }
+                console.log('audit minima', {
+                  minAll: auditState.minAll,
+                  minRecommended: auditState.minRecommended,
+                });
+                appendDebug('today sample:');
+                if (auditState.todaySample.length) {
+                  auditState.todaySample.forEach((entry, index) => {
+                    const priceText = isFiniteNumber(entry.price) ? formatYen(entry.price) : 'n/a';
+                    const effText = isFiniteNumber(entry.effectivePrice) ? formatYen(entry.effectivePrice) : 'n/a';
+                    const pointsText = isFiniteNumber(entry.points) ? `${entry.points}%` : '-';
+                    const brandText = entry.brandMatched ? 'brand✅' : 'brand✖️';
+                    appendDebug(`  #${index + 1} ${entry.mall || '-'} / ${entry.shop || '-'} price=${priceText} eff=${effText} points=${pointsText} ${brandText}`);
+                  });
+                } else {
+                  appendDebug('  (no rows)');
+                }
+                appendDebug(`minAll: ${isFiniteNumber(auditState.minAll) ? formatYen(auditState.minAll) : 'n/a'}`);
+                appendDebug(`minRecommended: ${isFiniteNumber(auditState.minRecommended) ? formatYen(auditState.minRecommended) : 'n/a'}`);
+              }
+
+              function recordInvariantViolation(code, description, details = {}) {
+                if (!isDebugMode) {
+                  return;
+                }
+                if (triggeredInvariants.has(code)) {
+                  return;
+                }
+                triggeredInvariants.add(code);
+                const message = `Invariant ${code} violated: ${description}`;
+                appendDebug(`⚠️ ${message}`);
+                console.error(message, { ...details, code, sku });
+              }
+
+              function runInvariantChecks({ stage } = {}) {
+                if (!isDebugMode) {
+                  return;
+                }
+                const headerToday = auditState.header?.today ?? null;
+                const headerRecommended = auditState.header?.recommended ?? null;
+                const { minAll, minRecommended, chartLatest } = auditState;
+                if (isFiniteNumber(headerToday) && isFiniteNumber(minAll) && headerToday !== minAll) {
+                  recordInvariantViolation(
+                    'A',
+                    `header.today ${formatYen(headerToday)} ≠ minAll ${formatYen(minAll)}`,
+                    { stage, headerToday, minAll },
+                  );
+                }
+                if (isFiniteNumber(headerRecommended) && isFiniteNumber(headerToday) && headerRecommended < headerToday) {
+                  recordInvariantViolation(
+                    'B',
+                    `header.recommended ${formatYen(headerRecommended)} < header.today ${formatYen(headerToday)}`,
+                    { stage, headerRecommended, headerToday },
+                  );
+                }
+                if (isFiniteNumber(chartLatest) && isFiniteNumber(headerToday) && chartLatest !== headerToday) {
+                  recordInvariantViolation(
+                    'C',
+                    `chart.latest ${formatYen(chartLatest)} ≠ header.today ${formatYen(headerToday)}`,
+                    { stage, chartLatest, headerToday },
+                  );
+                }
+              }
+
+              if (isDebugMode) {
+                computeAuditSnapshot();
+                reportAuditSnapshot();
+                runInvariantChecks({ stage: 'initial' });
+              }
+
               function parseDate(value) {
                 if (!value) return null;
                 const date = new Date(value);
@@ -1931,6 +2175,9 @@ export function getStaticPaths() {
                 clearTooltip();
                 chartLayout = null;
                 chart.latest = null;
+                if (isDebugMode) {
+                  auditState.chartLatest = null;
+                }
                 hoverIndex = null;
                 pinnedIndex = null;
                 if (summaryVisual) {
@@ -2541,23 +2788,16 @@ export function getStaticPaths() {
                     ? Number(chartData[chartData.length - 1]?.price)
                     : Number.NaN;
                   chart.latest = Number.isFinite(latestValue) ? latestValue : null;
+                  if (isDebugMode) {
+                    auditState.chartLatest = chart.latest;
+                    runInvariantChecks({ stage: 'chart' });
+                  }
                   canvas.style.display = '';
                   msg.textContent = '';
                   if (chartWrap) {
                     setLoading(false);
                   }
                   updateSummary();
-                  if (isDebugMode && Number.isFinite(chart.latest) && Number.isFinite(today.minEffective)) {
-                    if (chart.latest !== today.minEffective) {
-                      const mismatchText = `chart.latest ${formatYen(chart.latest)} ≠ today.minEffective ${formatYen(today.minEffective)}`;
-                      appendDebug(`⚠️ ${mismatchText}`);
-                      console.error(mismatchText, {
-                        chartLatest: chart.latest,
-                        todayMinEffective: today.minEffective,
-                        sku: currentSku,
-                      });
-                    }
-                  }
                   showDebug(url.toString());
                   renderChart(currentSku);
                 } catch (err) {
