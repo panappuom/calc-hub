@@ -10,6 +10,8 @@ const publicOut = path.join(rootDir, 'public', 'data', 'prices', 'today.json');
 const dataOut = path.join(rootDir, 'data', 'prices', 'today.json');
 const historyDir = path.join(rootDir, 'data', 'price-history');
 const publicHistoryDir = path.join(rootDir, 'public', 'data', 'price-history');
+const enableHistoryBackfill = ['1', 'true', 'yes'].includes(String(process.env.ENABLE_HISTORY_BACKFILL ?? '').toLowerCase());
+const historyDryRun = ['1', 'true', 'yes'].includes(String(process.env.DRY_RUN ?? '').toLowerCase());
 const publicBase = process.env.PUBLIC_BASE_URL || 'https://panappuom.github.io/calc-hub/';
 
 // Generate today's date in JST for consistent history keys
@@ -21,6 +23,79 @@ async function readJson(p) {
     return JSON.parse(raw);
   } catch {
     return null;
+  }
+}
+
+function quantile(sorted, q) {
+  if (!Array.isArray(sorted) || sorted.length === 0) return Number.NaN;
+  if (sorted.length === 1) return sorted[0];
+  const pos = (sorted.length - 1) * q;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  const baseValue = sorted[base];
+  const nextValue = sorted[Math.min(sorted.length - 1, base + 1)];
+  return baseValue + rest * (nextValue - baseValue);
+}
+
+function cleanHistoryEntries(entries) {
+  const normalized = Array.isArray(entries)
+    ? entries.filter(it => typeof it?.date === 'string' && Number.isFinite(it?.price))
+    : [];
+  if (normalized.length <= 1) {
+    return { history: normalized, removed: [] };
+  }
+  const prices = normalized.map(it => it.price).sort((a, b) => a - b);
+  const q1 = quantile(prices, 0.25);
+  const q3 = quantile(prices, 0.75);
+  const median = quantile(prices, 0.5);
+  const iqr = q3 - q1;
+  let lowerBound = q1 - 1.5 * iqr;
+  let upperBound = q3 + 1.5 * iqr;
+  if (!Number.isFinite(lowerBound)) lowerBound = 0;
+  if (!Number.isFinite(upperBound)) upperBound = Number.POSITIVE_INFINITY;
+  if (Number.isFinite(median) && median > 0) {
+    const ratioLower = median / 4;
+    const ratioUpper = median * 4;
+    lowerBound = Math.min(lowerBound, ratioLower);
+    upperBound = Math.max(upperBound, ratioUpper);
+  }
+  lowerBound = Math.max(0, lowerBound);
+  const absoluteUpper = 5_000_000;
+  upperBound = Math.min(upperBound, absoluteUpper);
+
+  const removed = [];
+  const cleaned = [];
+  for (const entry of normalized) {
+    const price = entry.price;
+    if (!Number.isFinite(price)) {
+      removed.push(entry);
+      continue;
+    }
+    if (price < lowerBound || price > upperBound) {
+      removed.push(entry);
+      continue;
+    }
+    cleaned.push(entry);
+  }
+  return { history: cleaned, removed };
+}
+
+async function logHistoryDiff(filePath, nextJson) {
+  try {
+    const prevJson = await fs.readFile(filePath, 'utf-8');
+    if (prevJson === nextJson) {
+      console.log('[merge] history: dry-run no changes for', filePath);
+      return;
+    }
+    console.log('[merge] history: dry-run diff for', filePath);
+    console.log('--- before');
+    console.log(prevJson);
+    console.log('--- after');
+    console.log(nextJson);
+  } catch (e) {
+    console.log('[merge] history: dry-run new file for', filePath);
+    console.log('--- after');
+    console.log(nextJson);
   }
 }
 
@@ -241,6 +316,15 @@ async function updateHistory(items) {
       }
 
       const today = todayJst();
+      const requiresBackfill = enableHistoryBackfill && (meta?.valueType !== 'effectivePrice');
+      if (requiresBackfill) {
+        const beforeCount = hist.length;
+        hist = hist.filter(h => typeof h?.date === 'string' && h.date <= today);
+        const removedFuture = beforeCount - hist.length;
+        if (removedFuture > 0) {
+          console.log('[merge] history: trimmed future/raw entries for', item.skuId, removedFuture);
+        }
+      }
       const bestEffective = Number.isFinite(item.bestPriceEffective)
         ? item.bestPriceEffective
         : Number.isFinite(item.bestPrice)
@@ -257,15 +341,35 @@ async function updateHistory(items) {
       hist = hist
         .filter(h => typeof h?.date === 'string' && typeof h?.price === 'number')
         .sort((a, b) => b.date.localeCompare(a.date));
+
+      if (enableHistoryBackfill) {
+        const { history: cleanedHist, removed } = cleanHistoryEntries(hist);
+        if (removed.length > 0) {
+          console.log('[merge] history: removed outliers for', item.skuId, removed.map(r => `${r.date}:${r.price}`).join(', '));
+        }
+        hist = cleanedHist;
+      }
+
       if (hist.length > 30) hist = hist.slice(0, 30);
 
       const nextMeta = { ...meta, valueType: 'effectivePrice' };
+      if (enableHistoryBackfill) {
+        nextMeta.cleaned = true;
+      }
 
       const output = { meta: nextMeta, history: hist };
-      await fs.writeFile(histFile, JSON.stringify(output, null, 2));
-      await fs.writeFile(publicFile, JSON.stringify(output, null, 2));
-      console.log('[merge] history: merged', item.skuId);
-      console.log('[merge] history: wrote', `public/data/price-history/${item.skuId}.json`);
+      const outputJson = JSON.stringify(output, null, 2);
+
+      const dryRunEnabled = enableHistoryBackfill && historyDryRun;
+      if (dryRunEnabled) {
+        await logHistoryDiff(histFile, outputJson);
+        console.log('[merge] history: dry-run skipped write for', item.skuId);
+      } else {
+        await fs.writeFile(histFile, outputJson);
+        await fs.writeFile(publicFile, outputJson);
+        console.log('[merge] history: merged', item.skuId);
+        console.log('[merge] history: wrote', `public/data/price-history/${item.skuId}.json`);
+      }
     }
   } catch (e) {
     console.warn('[merge] failed to update history', e);
