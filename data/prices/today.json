@@ -8,6 +8,17 @@
     {
       "skuId": "ssd_1tb",
       "bestPrice": 10000,
+      "bestPriceEffective": 10000,
+      "bestEntryEffective": {
+        "title": "SanDisk 1TB SSD",
+        "shopName": "Dummy Shop",
+        "itemUrl": "https://example.com/ssd",
+        "price": 10000,
+        "pointRate": 0,
+        "imageUrl": "https://example.com/ssd.jpg",
+        "itemCode": "dummy1",
+        "effectivePrice": 10000
+      },
       "bestShop": "Dummy Shop",
       "list": [
         {
@@ -17,13 +28,25 @@
           "price": 10000,
           "pointRate": 0,
           "imageUrl": "https://example.com/ssd.jpg",
-          "itemCode": "dummy1"
+          "itemCode": "dummy1",
+          "effectivePrice": 10000
         }
       ]
     },
     {
       "skuId": "sd_128",
       "bestPrice": 2000,
+      "bestPriceEffective": 2000,
+      "bestEntryEffective": {
+        "title": "SanDisk 128GB SD",
+        "shopName": "Example Store",
+        "itemUrl": "https://example.com/sd",
+        "price": 2000,
+        "pointRate": 0,
+        "imageUrl": "https://example.com/sd.jpg",
+        "itemCode": "dummy2",
+        "effectivePrice": 2000
+      },
       "bestShop": "Example Store",
       "list": [
         {
@@ -33,9 +56,15 @@
           "price": 2000,
           "pointRate": 0,
           "imageUrl": "https://example.com/sd.jpg",
-          "itemCode": "dummy2"
+          "itemCode": "dummy2",
+          "effectivePrice": 2000
         }
       ]
     }
-  ]
+  ],
+  "meta": {
+    "valueType": "effectivePrice",
+    "tz": "Asia/Tokyo",
+    "version": 2
+  }
 }

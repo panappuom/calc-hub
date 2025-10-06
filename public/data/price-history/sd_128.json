@@ -1,6 +1,16 @@
-[
-  {
-    "date": "2025-09-07",
-    "price": 12345
-  }
-]
+{
+  "meta": {
+    "valueType": "effectivePrice",
+    "tz": "Asia/Tokyo"
+  },
+  "history": [
+    {
+      "date": "2025-09-09",
+      "price": 2345
+    },
+    {
+      "date": "2025-09-07",
+      "price": 2345
+    }
+  ]
+}
