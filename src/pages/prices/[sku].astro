@@ -296,6 +296,62 @@ const bestPriceContext = {
   tieCount,
 };
 const bestPriceContextScript = JSON.stringify(bestPriceContext);
+
+const productStructuredData = (() => {
+  const nameSource = typeof skuInfo?.q === "string" && skuInfo.q.trim() ? skuInfo.q.trim() : sku;
+  if (!nameSource) {
+    return null;
+  }
+
+  const rawPrice = Number(bestToday?.price);
+  if (!Number.isFinite(rawPrice) || rawPrice <= 0) {
+    return null;
+  }
+
+  const offerUrl = typeof bestToday?.itemUrl === "string" ? bestToday.itemUrl.trim() : "";
+  if (!offerUrl) {
+    return null;
+  }
+
+  let resolvedOfferUrl;
+  try {
+    const parsed = new URL(offerUrl);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      resolvedOfferUrl = parsed.toString();
+    }
+  } catch {
+    /* noop */
+  }
+
+  if (!resolvedOfferUrl) {
+    return null;
+  }
+
+  let productUrl;
+  try {
+    productUrl = new URL(BASE_URL + `prices/${sku}/`, Astro.site).toString();
+  } catch {
+    return null;
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: nameSource,
+    sku,
+    url: productUrl,
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "JPY",
+      price: rawPrice,
+      url: resolvedOfferUrl,
+    },
+  };
+})();
+
+const productStructuredDataScript = productStructuredData
+  ? JSON.stringify(productStructuredData, null, 2)
+  : null;
 function formatCurrency(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return '';
@@ -437,6 +493,9 @@ export function getStaticPaths() {
     <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
     {analyticsScript && (
       <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
+    )}
+    {productStructuredDataScript && (
+      <script type="application/ld+json" is:inline set:html={productStructuredDataScript}></script>
     )}
   </head>
 <body data-sku={sku}>
