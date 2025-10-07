@@ -53,11 +53,23 @@ function cleanHistoryEntries(entries) {
   let upperBound = q3 + 1.5 * iqr;
   if (!Number.isFinite(lowerBound)) lowerBound = 0;
   if (!Number.isFinite(upperBound)) upperBound = Number.POSITIVE_INFINITY;
+  const positivePrices = prices.filter(price => price > 0);
   if (Number.isFinite(median) && median > 0) {
     const ratioLower = median / 4;
     const ratioUpper = median * 4;
     lowerBound = Math.min(lowerBound, ratioLower);
     upperBound = Math.max(upperBound, ratioUpper);
+  } else if (positivePrices.length > 0) {
+    const positiveQ1 = quantile(positivePrices, 0.25);
+    const positiveQ3 = quantile(positivePrices, 0.75);
+    const positiveIqr = positiveQ3 - positiveQ1;
+    let positiveUpper = positiveQ3 + 1.5 * positiveIqr;
+    if (!Number.isFinite(positiveUpper) || positiveUpper <= 0) {
+      positiveUpper = positivePrices[positivePrices.length - 1];
+    }
+    const minPositive = positivePrices[0];
+    const expandedUpper = Math.max(positiveUpper, minPositive * 4);
+    upperBound = Math.max(upperBound, expandedUpper);
   }
   lowerBound = Math.max(0, lowerBound);
   const absoluteUpper = 5_000_000;
