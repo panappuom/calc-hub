@@ -27,3 +27,12 @@ PUBLIC_ANALYTICS_SRC=https://plausible.io/js/script.js
 | `price_click` | `/prices/[sku]/` の「ショップで確認」ボタンをクリックしたとき | `sku`, `store`, `shop_name`, `price`, `effective_price`, `utm_source`, `utm_medium`, `utm_campaign` |
 
 `PUBLIC_ANALYTICS_PROVIDER=plausible` が設定されていれば、各イベントは `window.plausible()` を通じて送信されます。
+
+## 価格履歴のバックフィルとクリーニング
+
+Rakuten/Yahoo の集計結果をマージする `pipelines/prices-merge.mjs` では、オプトインで既存の価格履歴をクリーンアップできます。
+
+- `ENABLE_HISTORY_BACKFILL=true` を設定すると、`meta.valueType` が `effectivePrice` 以外のファイルでも当日以降は強制的に効果価格で上書きし、IQR ベースの外れ値を除外したうえで `meta.cleaned=true` を付与します。
+- `DRY_RUN=true` を併用するとファイルへの書き込みは行わず、差分のみをログ出力します。
+
+本番に適用する際はまず `DRY_RUN=true` を指定して差分を確認してから、問題がなければ `DRY_RUN` を外して再実行してください。
