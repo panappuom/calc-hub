@@ -1,16 +1,14 @@
 ---
-import "../../styles/global.css";
+import Layout from "../../layouts/Layout.astro";
 import AnalyticsRuntime from "../../components/AnalyticsRuntime.astro";
 import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
-import { getAnalyticsScriptConfig } from "../../lib/analytics";
 import { safeBreak } from "../../lib/safe-break";
 import { isDealRelatedToSku } from "../../lib/sku-map.mjs";
 import { buildLink } from "../../../scripts/link-builder.mjs";
 const IS_DEV = import.meta.env.DEV;
 const BASE_URL = import.meta.env.BASE_URL;
 const clientGlobalsScript = `window.__APP_DEV__ = ${JSON.stringify(IS_DEV)};\nwindow.__BASE_URL__ = ${JSON.stringify(BASE_URL)};`;
-const analyticsScript = getAnalyticsScriptConfig();
 
 let data;
 let rakutenData;
@@ -60,6 +58,13 @@ const { sku } = Astro.params;
 const skuInfo = skus.find(s => s.id === sku);
 const priceInfo = data?.items?.find(i => i.skuId === sku);
 const dealsItems = Array.isArray(dealsFeed?.items) ? dealsFeed.items : [];
+const pageTitle = `${skuInfo ? skuInfo.q : sku} – 価格一覧`;
+const bodyAttributes: Record<string, string> = {
+  'data-sku': sku ?? '',
+};
+if (Array.isArray(skuInfo?.brandHints) && skuInfo.brandHints.length > 0) {
+  bodyAttributes['data-brand-hints'] = JSON.stringify(skuInfo.brandHints);
+}
 
 const dealDateFormatter = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
@@ -492,22 +497,14 @@ export function getStaticPaths() {
   return skus.map(s => ({ params: { sku: s.id } }));
 }
 ---
-<html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <base href={BASE_URL} />
+<Layout title={pageTitle} bodyAttributes={bodyAttributes}>
+  <Fragment slot="head">
     <script is:inline set:html={clientGlobalsScript}></script>
-    <title>{skuInfo ? skuInfo.q : sku} – 価格一覧</title>
-    {analyticsScript && (
-      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
-    )}
     {productStructuredDataScript && (
       <script type="application/ld+json" is:inline set:html={productStructuredDataScript}></script>
     )}
-  </head>
-<body data-sku={sku} data-brand-hints={skuInfo?.brandHints ? JSON.stringify(skuInfo.brandHints) : undefined}>
-    <div class="wrap">
+  </Fragment>
+  <div class="wrap">
         <a href="./" class="small">← トップ</a>
       <h1 set:html={safeBreak(`${skuInfo ? skuInfo.q : sku} – 価格一覧`)}></h1>
       <p class="jp-copy">ショップ別の価格一覧です。実質価格（ポイント込み）で安い順に並べています。</p>
@@ -2840,8 +2837,7 @@ export function getStaticPaths() {
       ) : (
         <p>データ少</p>
       )}
-    </div>
-    <Footer />
-    <AnalyticsRuntime />
-  </body>
-</html>
+  </div>
+  <Footer />
+  <AnalyticsRuntime />
+</Layout>

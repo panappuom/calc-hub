@@ -1,12 +1,10 @@
 ---
-import "../../styles/global.css";
+import Layout from "../../layouts/Layout.astro";
 import AnalyticsRuntime from "../../components/AnalyticsRuntime.astro";
 import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
-import { getAnalyticsScriptConfig } from "../../lib/analytics";
 import { safeBreak } from "../../lib/safe-break";
 const BASE_URL = import.meta.env.BASE_URL;
-const analyticsScript = getAnalyticsScriptConfig();
 
 let data;
 let sourceStatus = "fail";
@@ -32,18 +30,8 @@ if (data?.sourceStatus) {
 }
 const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
 ---
-<html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <base href={BASE_URL} />
-    <title>今日の最安“候補”</title>
-    {analyticsScript && (
-      <script defer data-domain={analyticsScript.domain} src={analyticsScript.src}></script>
-    )}
-  </head>
-  <body>
-    <div class="wrap">
+<Layout title="今日の最安“候補”">
+  <div class="wrap">
       {sourceStatus !== "ok" && (
         <div role="status" aria-live="polite" class="notice--warn" data-source-status={sourceStatus}>
           ⚠︎ {sourceStatus === "partial"
@@ -84,8 +72,7 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
       ) : (
         <p>データ少</p>
       )}
-    </div>
-    <Footer />
-    <AnalyticsRuntime />
-  </body>
-</html>
+  </div>
+  <Footer />
+  <AnalyticsRuntime />
+</Layout>
