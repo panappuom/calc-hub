@@ -19,6 +19,10 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     name: Test and Build
     runs-on: ubuntu-latest
+    env:
+      PUBLIC_ANALYTICS_PROVIDER: ${{ vars.PUBLIC_ANALYTICS_PROVIDER || 'plausible' }}
+      PUBLIC_ANALYTICS_DOMAIN: ${{ vars.PUBLIC_ANALYTICS_DOMAIN || 'panappuom.github.io' }}
+      PUBLIC_ANALYTICS_SRC: ${{ vars.PUBLIC_ANALYTICS_SRC || 'https://plausible.io/js/script.js' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
