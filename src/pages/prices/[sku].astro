@@ -2068,7 +2068,7 @@ export function getStaticPaths() {
                 const priceText = formatYen(datum.price);
                 tooltip.innerHTML = `
                   <div class="chart-tooltip__date">${dateText}</div>
-                  <div class="chart-tooltip__price">実質 ${priceText}</div>
+                  <div class="chart-tooltip__price">${priceText}</div>
                 `;
                 if (chartWrap && canvas) {
                   const containerRect = chartWrap.getBoundingClientRect();
@@ -2256,7 +2256,7 @@ export function getStaticPaths() {
                     && now.getFullYear() === lastDate.getFullYear()
                     && now.getMonth() === lastDate.getMonth()
                     && now.getDate() === lastDate.getDate();
-                  const badgeLabel = `${isToday ? '本日' : '最新'} 実質${formatYen(lastDatum.price)}`;
+                  const badgeLabel = `${isToday ? '本日' : '最新'} ${formatYen(lastDatum.price)}`;
                   const badgeWidthCss = ctx.measureText(badgeLabel).width / dpr;
                   const markerRadiusCss = 5;
                   badgeAvoidRightCss = Math.max(0, badgeWidthCss + 8 + markerRadiusCss);
@@ -2498,7 +2498,7 @@ export function getStaticPaths() {
                     && now.getFullYear() === lastDate.getFullYear()
                     && now.getMonth() === lastDate.getMonth()
                     && now.getDate() === lastDate.getDate();
-                  const badgeLabel = `${isToday ? '本日' : '最新'} 実質${formatYen(lastDatum.price)}`;
+                  const badgeLabel = `${isToday ? '本日' : '最新'} ${formatYen(lastDatum.price)}`;
                   const badgePaddingX = 8 * dpr;
                   const badgePaddingY = 4 * dpr;
                   ctx.font = `${12 * dpr}px "system-ui", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
