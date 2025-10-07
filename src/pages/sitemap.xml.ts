@@ -2,9 +2,11 @@ import type { APIRoute } from "astro";
 import skus from "../data/skus.json";
 
 const isProdDeploy = import.meta.env.PUBLIC_DEPLOY_TARGET === "prod";
+const BASE_URL = import.meta.env.BASE_URL || "/";
 
 function buildUrl(origin: string, path: string) {
-  return new URL(path, origin).toString();
+  const siteBase = new URL(BASE_URL, origin);
+  return new URL(path, siteBase).toString();
 }
 
 export const GET: APIRoute = ({ url }) => {
