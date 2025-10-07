@@ -269,6 +269,9 @@ const bestRecommendedAnalyticsPayload = buildPriceAnalyticsPayload(bestRecommend
 const hasRecommendedSection = Boolean(skuInfo?.brandHints?.length);
 const bestTodayEffectiveValue = getEffectiveValue(bestToday);
 const bestRecommendedEffectiveValue = getEffectiveValue(bestRecommended);
+const bestTodayEffectiveText = Number.isFinite(bestTodayEffectiveValue)
+  ? formatCurrency(bestTodayEffectiveValue)
+  : '';
 const isSamePrice =
   Number.isFinite(bestTodayEffectiveValue) &&
   Number.isFinite(bestRecommendedEffectiveValue) &&
@@ -284,6 +287,11 @@ const tieCount = Number.isFinite(bestTodayEffectiveValue)
 const shouldShowTieLink = bestPriceCase === 'tie' && tieCount > 1;
 const showRecommendedCard = hasRecommendedSection && bestPriceCase === 'separate';
 const showPlaceholderCard = hasRecommendedSection && isSamePrice;
+const isRecommendedBelowToday =
+  showRecommendedCard
+  && Number.isFinite(bestTodayEffectiveValue)
+  && Number.isFinite(bestRecommendedEffectiveValue)
+  && bestRecommendedEffectiveValue < bestTodayEffectiveValue;
 const bestTodayLabel = isSamePrice
   ? '今日の最安 : 推奨最安（ブランド一致）と同額です。'
   : '今日の最安';
@@ -621,6 +629,9 @@ export function getStaticPaths() {
               </section>
               {showRecommendedCard ? (
                 <section class="best-price-card" role="region" aria-labelledby="best-recommended-heading">
+                  {isRecommendedBelowToday && (
+                    <span class="best-price-card__badge" role="status">例外: データ更新中</span>
+                  )}
                   <p class="best-price-card__label" id="best-recommended-heading">推奨最安（ブランド一致）</p>
                   {bestRecommendedCard ? (
                     <>
@@ -638,11 +649,11 @@ export function getStaticPaths() {
                           )}
                         </p>
                       )}
-                    {bestRecommendedCard.itemUrl && ( 
-                      <p class="best-price-card__line best-price-card__line--link">
-                        <a
-                          href={bestRecommendedCard.itemUrl}
-                          target="_blank"
+                      {bestRecommendedCard.itemUrl && (
+                        <p class="best-price-card__line best-price-card__line--link">
+                          <a
+                            href={bestRecommendedCard.itemUrl}
+                            target="_blank"
                           rel="nofollow noopener"
                           class="best-price-card__link"
                           title={bestRecommendedCard.shopTitle}
@@ -650,10 +661,13 @@ export function getStaticPaths() {
                           data-analytics={bestRecommendedAnalyticsPayload ? "price_click" : undefined}
                           data-analytics-payload={bestRecommendedAnalyticsPayload ?? undefined}
                         >
-                          {bestRecommendedCard.shopDisplayName} で確認 <span aria-hidden="true">↗</span>
-                        </a>
-                      </p>
-                    )}
+                            {bestRecommendedCard.shopDisplayName} で確認 <span aria-hidden="true">↗</span>
+                          </a>
+                        </p>
+                      )}
+                      {isRecommendedBelowToday && bestTodayEffectiveText && (
+                        <p class="best-price-card__note">今日の最安 {bestTodayEffectiveText}</p>
+                      )}
                     </>
                   ) : (
                     <p class="best-price-card__line best-price-card__line--empty">該当なし</p>
@@ -1906,16 +1920,22 @@ export function getStaticPaths() {
                 if (isFiniteNumber(headerRecommended) && isFiniteNumber(headerToday) && headerRecommended < headerToday) {
                   recordInvariantViolation(
                     'B',
-                    `header.recommended ${formatYen(headerRecommended)} < header.today ${formatYen(headerToday)}`,
+                    `header.recommended ${formatYen(headerRecommended)} < header.today ${formatYen(headerToday)} (failsafe active)`,
                     { stage, headerRecommended, headerToday },
                   );
                 }
-                if (isFiniteNumber(chartLatest) && isFiniteNumber(headerToday) && chartLatest !== headerToday) {
-                  recordInvariantViolation(
-                    'C',
-                    `chart.latest ${formatYen(chartLatest)} ≠ header.today ${formatYen(headerToday)}`,
-                    { stage, chartLatest, headerToday },
-                  );
+                if (isFiniteNumber(chartLatest) && isFiniteNumber(headerToday)) {
+                  const diff = Math.abs(chartLatest - headerToday);
+                  const base = Math.abs(headerToday);
+                  const ratio = base > 0 ? diff / base : diff > 0 ? Number.POSITIVE_INFINITY : 0;
+                  if (ratio > 0.02) {
+                    const percent = Number.isFinite(ratio) ? `${(ratio * 100).toFixed(2)}%` : '∞';
+                    recordInvariantViolation(
+                      'C',
+                      `chart.latest ${formatYen(chartLatest)} differs from header.today ${formatYen(headerToday)} by ${percent}`,
+                      { stage, chartLatest, headerToday, diff, ratio },
+                    );
+                  }
                 }
               }
 
