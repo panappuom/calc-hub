@@ -2777,12 +2777,30 @@ export function getStaticPaths() {
                   const histObject = hist && typeof hist === 'object' && !Array.isArray(hist) ? hist : null;
                   const meta = histObject?.meta ?? histObject?.history?.meta ?? null;
                   const valueType = typeof meta?.valueType === 'string' ? meta.valueType : '';
+                  const timezone = typeof meta?.tz === 'string' && meta.tz ? meta.tz : 'Asia/Tokyo';
                   const list = Array.isArray(hist)
                     ? hist
                     : Array.isArray(histObject?.history)
                       ? histObject.history
                       : Object.values(histObject || {}).find(Array.isArray) || [];
-                  const filtered = list
+                  const todayEffective = typeof today.minEffective === 'number' && Number.isFinite(today.minEffective)
+                    ? today.minEffective
+                    : Number.NaN;
+                  let todayDateKey = '';
+                  if (Number.isFinite(todayEffective)) {
+                    try {
+                      const formatter = new Intl.DateTimeFormat('en-CA', {
+                        timeZone: timezone,
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                      });
+                      todayDateKey = formatter.format(new Date());
+                    } catch (error) {
+                      console.warn('failed to resolve today date key', { error, timezone });
+                    }
+                  }
+                  let filtered = list
                     .map(item => {
                       const date = item?.date;
                       if (!date) {
@@ -2815,14 +2833,36 @@ export function getStaticPaths() {
                       return left - right;
                     })
                     .slice(-30);
+                  if (todayDateKey) {
+                    let matchedToday = false;
+                    for (let index = filtered.length - 1; index >= 0; index -= 1) {
+                      const entry = filtered[index];
+                      const entryDate = typeof entry?.date === 'string' ? entry.date : '';
+                      const entryKey = entryDate ? entryDate.slice(0, 10) : '';
+                      if (entryKey === todayDateKey) {
+                        filtered[index] = { ...entry, price: todayEffective };
+                        matchedToday = true;
+                        break;
+                      }
+                    }
+                    if (!matchedToday) {
+                      filtered = [...filtered, { date: todayDateKey, price: todayEffective }];
+                    }
+                    if (filtered.length > 30) {
+                      filtered = filtered.slice(-30);
+                    }
+                  }
                   if (filtered.length < 2) {
                     showNoData(`insufficient data (n=${filtered.length})`, currentSku);
                     return;
                   }
                   chartData = filtered;
-                  const latestValue = chartData.length
+                  let latestValue = chartData.length
                     ? Number(chartData[chartData.length - 1]?.price)
                     : Number.NaN;
+                  if (Number.isFinite(todayEffective)) {
+                    latestValue = todayEffective;
+                  }
                   chart.latest = Number.isFinite(latestValue) ? latestValue : null;
                   if (isDebugMode) {
                     auditState.chartLatest = chart.latest;
