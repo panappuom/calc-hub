@@ -2321,6 +2321,8 @@ export function getStaticPaths() {
                     xCss: indexToCssX(firstIndex),
                     text: formatMonthDay(firstDate),
                     date: firstDate,
+                    monthDayText: formatMonthDay(firstDate),
+                    dayText: formatDay(firstDate),
                   });
                 }
                 if (lastDate && lastIndex !== firstIndex) {
@@ -2329,6 +2331,8 @@ export function getStaticPaths() {
                     xCss: indexToCssX(lastIndex),
                     text: formatMonthDay(lastDate),
                     date: lastDate,
+                    monthDayText: formatMonthDay(lastDate),
+                    dayText: formatDay(lastDate),
                   });
                 }
 
@@ -2375,24 +2379,48 @@ export function getStaticPaths() {
                     if (xCss > innerPlotRightCss) {
                       return;
                     }
+                    const monthDayText = formatMonthDay(date);
+                    const dayText = formatDay(date);
                     const text =
-                      nextPlacedDate && isSameMonth(date, nextPlacedDate)
-                        ? formatDay(date)
-                        : formatMonthDay(date);
-                    const textWidthCss = ctx.measureText(text).width / dpr;
-                    if (textWidthCss <= 0) {
+                      nextPlacedDate && isSameMonth(date, nextPlacedDate) ? dayText : monthDayText;
+                    const monthDayWidthCss = ctx.measureText(monthDayText).width / dpr;
+                    const dayWidthCss = ctx.measureText(dayText).width / dpr;
+                    const maxWidthCss = Math.max(monthDayWidthCss, dayWidthCss);
+                    if (maxWidthCss <= 0) {
                       return;
                     }
-                    const minGap = Math.max(minLabelGapCss, textWidthCss / 2 + labelPaddingCss);
+                    const minGap = Math.max(minLabelGapCss, maxWidthCss / 2 + labelPaddingCss);
                     if (lastPlacedXCss - xCss < minGap) {
                       return;
                     }
-                    labels.push({ index, xCss, text, date });
+                    labels.push({
+                      index,
+                      xCss,
+                      text,
+                      date,
+                      monthDayText,
+                      dayText,
+                    });
                     lastPlacedXCss = xCss;
                     nextPlacedDate = date;
                   });
 
                 labels.sort((a, b) => a.xCss - b.xCss);
+                labels.forEach((label, index) => {
+                  if (!label || !label.date) {
+                    return;
+                  }
+                  if (index === 0) {
+                    label.text = label.monthDayText ?? label.text;
+                    return;
+                  }
+                  const prev = labels[index - 1];
+                  if (prev && prev.date && !isSameMonth(label.date, prev.date)) {
+                    label.text = label.monthDayText ?? label.text;
+                  } else {
+                    label.text = label.dayText ?? label.text;
+                  }
+                });
                 if (labels.length) {
                   const firstLabel = labels[0];
                   const firstWidthCss = ctx.measureText(firstLabel.text).width / dpr;
