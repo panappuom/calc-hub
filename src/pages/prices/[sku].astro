@@ -2783,7 +2783,9 @@ export function getStaticPaths() {
                     : Array.isArray(histObject?.history)
                       ? histObject.history
                       : Object.values(histObject || {}).find(Array.isArray) || [];
-                  const todayEffective = Number(today.minEffective);
+                  const todayEffective = typeof today.minEffective === 'number' && Number.isFinite(today.minEffective)
+                    ? today.minEffective
+                    : Number.NaN;
                   let todayDateKey = '';
                   if (Number.isFinite(todayEffective)) {
                     try {
