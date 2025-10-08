@@ -20,6 +20,8 @@ jobs:
     name: Test and Build
     runs-on: ubuntu-latest
     env:
+      NODE_ENV: production
+      PUBLIC_DEPLOY_TARGET: 'prod'
       PUBLIC_ANALYTICS_PROVIDER: ${{ vars.PUBLIC_ANALYTICS_PROVIDER || 'plausible' }}
       PUBLIC_ANALYTICS_DOMAIN: ${{ vars.PUBLIC_ANALYTICS_DOMAIN || 'panappuom.github.io' }}
       PUBLIC_ANALYTICS_SRC: ${{ vars.PUBLIC_ANALYTICS_SRC || 'https://plausible.io/js/script.js' }}
