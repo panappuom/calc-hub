@@ -978,7 +978,7 @@ export function getStaticPaths() {
           ))}
           <p class="small jp-copy">※実質価格はポイント考慮の試算です。</p>
           <p class="small jp-copy">価格・在庫は常に変動します。購入前にリンク先で最新情報をご確認ください。</p>
-          <h2 set:html={safeBreak("価格推移 (30日)")}></h2>
+          <h2 set:html={safeBreak("実質価格の推移 (30日)")}></h2>
           <div class="chart-container chart-wrap">
             <div id="chart-skeleton" class="chart-skeleton" aria-hidden="true"></div>
             <canvas
@@ -2167,10 +2167,10 @@ export function getStaticPaths() {
                   }
                   const chipTexts = [
                     periodChip,
-                    `最安 実質${formatYen(minItem.price)}${minDateText ? ` (${minDateText})` : ''}`,
-                    `最高 実質${formatYen(maxItem.price)}${maxDateText ? ` (${maxDateText})` : ''}`,
-                    `平均 実質${formatYen(avg)}`,
-                    `最新 実質${formatYen(latest.price)}`,
+                    `最安 ${formatYen(minItem.price)}${minDateText ? ` (${minDateText})` : ''}`,
+                    `最高 ${formatYen(maxItem.price)}${maxDateText ? ` (${maxDateText})` : ''}`,
+                    `平均 ${formatYen(avg)}`,
+                    `最新 ${formatYen(latest.price)}`,
                   ].filter(Boolean);
                   chipTexts.forEach(text => {
                     const chip = document.createElement('span');
