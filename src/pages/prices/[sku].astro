@@ -157,14 +157,33 @@ const relatedDeals = dealsItems
   .sort((a, b) => b.timestamp - a.timestamp)
   .slice(0, 3);
 function getEffectivePriceValue(it) {
-  const price = Number(it?.price);
-  if (!Number.isFinite(price)) {
+  if (!it || typeof it !== 'object') {
     return Number.POSITIVE_INFINITY;
   }
-  const pointRate = Number(it?.pointRate ?? 0);
+
+  const explicitEffectiveFields = [
+    it.effective,
+    it.effectivePrice,
+    it.effective_price,
+    it.effective_value,
+  ];
+  for (const field of explicitEffectiveFields) {
+    const value = Number(field);
+    if (Number.isFinite(value) && value > 0) {
+      return Math.floor(value);
+    }
+  }
+
+  const price = Number(it.price);
+  if (!Number.isFinite(price) || price <= 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const pointRate = Number(it.pointRate ?? 0);
   if (!Number.isFinite(pointRate) || pointRate <= 0) {
     return Math.floor(price);
   }
+
   return Math.floor(price * (100 - pointRate) / 100);
 }
 
@@ -2758,12 +2777,28 @@ export function getStaticPaths() {
                   const histObject = hist && typeof hist === 'object' && !Array.isArray(hist) ? hist : null;
                   const meta = histObject?.meta ?? histObject?.history?.meta ?? null;
                   const valueType = typeof meta?.valueType === 'string' ? meta.valueType : '';
+                  const timezone = typeof meta?.tz === 'string' && meta.tz ? meta.tz : 'Asia/Tokyo';
                   const list = Array.isArray(hist)
                     ? hist
                     : Array.isArray(histObject?.history)
                       ? histObject.history
                       : Object.values(histObject || {}).find(Array.isArray) || [];
-                  const filtered = list
+                  const todayEffective = Number(today.minEffective);
+                  let todayDateKey = '';
+                  if (Number.isFinite(todayEffective)) {
+                    try {
+                      const formatter = new Intl.DateTimeFormat('en-CA', {
+                        timeZone: timezone,
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                      });
+                      todayDateKey = formatter.format(new Date());
+                    } catch (error) {
+                      console.warn('failed to resolve today date key', { error, timezone });
+                    }
+                  }
+                  let filtered = list
                     .map(item => {
                       const date = item?.date;
                       if (!date) {
@@ -2796,14 +2831,36 @@ export function getStaticPaths() {
                       return left - right;
                     })
                     .slice(-30);
+                  if (todayDateKey) {
+                    let matchedToday = false;
+                    for (let index = filtered.length - 1; index >= 0; index -= 1) {
+                      const entry = filtered[index];
+                      const entryDate = typeof entry?.date === 'string' ? entry.date : '';
+                      const entryKey = entryDate ? entryDate.slice(0, 10) : '';
+                      if (entryKey === todayDateKey) {
+                        filtered[index] = { ...entry, price: todayEffective };
+                        matchedToday = true;
+                        break;
+                      }
+                    }
+                    if (!matchedToday) {
+                      filtered = [...filtered, { date: todayDateKey, price: todayEffective }];
+                    }
+                    if (filtered.length > 30) {
+                      filtered = filtered.slice(-30);
+                    }
+                  }
                   if (filtered.length < 2) {
                     showNoData(`insufficient data (n=${filtered.length})`, currentSku);
                     return;
                   }
                   chartData = filtered;
-                  const latestValue = chartData.length
+                  let latestValue = chartData.length
                     ? Number(chartData[chartData.length - 1]?.price)
                     : Number.NaN;
+                  if (Number.isFinite(todayEffective)) {
+                    latestValue = todayEffective;
+                  }
                   chart.latest = Number.isFinite(latestValue) ? latestValue : null;
                   if (isDebugMode) {
                     auditState.chartLatest = chart.latest;
