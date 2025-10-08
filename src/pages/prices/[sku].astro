@@ -157,14 +157,33 @@ const relatedDeals = dealsItems
   .sort((a, b) => b.timestamp - a.timestamp)
   .slice(0, 3);
 function getEffectivePriceValue(it) {
-  const price = Number(it?.price);
-  if (!Number.isFinite(price)) {
+  if (!it || typeof it !== 'object') {
     return Number.POSITIVE_INFINITY;
   }
-  const pointRate = Number(it?.pointRate ?? 0);
+
+  const explicitEffectiveFields = [
+    it.effective,
+    it.effectivePrice,
+    it.effective_price,
+    it.effective_value,
+  ];
+  for (const field of explicitEffectiveFields) {
+    const value = Number(field);
+    if (Number.isFinite(value) && value > 0) {
+      return Math.floor(value);
+    }
+  }
+
+  const price = Number(it.price);
+  if (!Number.isFinite(price) || price <= 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const pointRate = Number(it.pointRate ?? 0);
   if (!Number.isFinite(pointRate) || pointRate <= 0) {
     return Math.floor(price);
   }
+
   return Math.floor(price * (100 - pointRate) / 100);
 }
 
