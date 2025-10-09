@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { getAnalyticsScriptConfig } from '../lib/analytics';
+import AnalyticsRuntime from '../components/AnalyticsRuntime.astro';
 
 export interface Props {
   title?: string;
@@ -29,5 +30,6 @@ const isProdDeploy = import.meta.env.PUBLIC_DEPLOY_TARGET === 'prod';
   </head>
   <body {...bodyAttributes}>
     <slot />
+    <AnalyticsRuntime />
   </body>
 </html>
