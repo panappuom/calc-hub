@@ -1,4 +1,4 @@
-type AnalyticsProps = import('../lib/analytics').AnalyticsProps;
+import { send, type AnalyticsProps } from '../lib/analytics';
 
 const setupAnalyticsDelegation = () => {
   document.addEventListener(
@@ -21,9 +21,7 @@ const setupAnalyticsDelegation = () => {
       } catch {
         props = undefined;
       }
-      void import('../lib/analytics').then((module) => {
-        module.send(name, props);
-      });
+      send(name, props);
     },
     { capture: true },
   );
