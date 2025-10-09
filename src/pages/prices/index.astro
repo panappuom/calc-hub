@@ -1,6 +1,5 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import AnalyticsRuntime from "../../components/AnalyticsRuntime.astro";
 import Footer from "../../components/Footer.astro";
 import skus from "../../data/skus.json";
 import { safeBreak } from "../../lib/safe-break";
@@ -74,5 +73,4 @@ const skuMap = Object.fromEntries(skus.map(s => [s.id, s]));
       )}
   </div>
   <Footer />
-  <AnalyticsRuntime />
 </Layout>
