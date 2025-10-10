@@ -1,8 +1,4 @@
 ---
-// 先頭に追加
-import { isAnalyticsEnabled } from '../lib/analytics';
 import runtimeUrl from '../scripts/analytics-runtime.ts?url';
-
-const enabled = isAnalyticsEnabled();
 ---
-{enabled && <script type="module" src={runtimeUrl}></script>}
+<script type="module" src={runtimeUrl}></script>
