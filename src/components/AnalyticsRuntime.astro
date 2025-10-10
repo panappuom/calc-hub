@@ -1,4 +1,16 @@
 ---
-import runtimeUrl from '../scripts/analytics-runtime.ts?url';
+/* 外部importなし：インラインで確実に発火させる */
 ---
-<script type="module" src={runtimeUrl}></script>
+<script>
+  document.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest && e.target.closest('[data-analytics]');
+    if (!t) return;
+    const name = t.getAttribute('data-analytics');
+    if (!name) return;
+    const raw = t.getAttribute('data-analytics-payload');
+    let props; try { props = raw ? JSON.parse(raw) : undefined; } catch {}
+    if (typeof window.plausible === 'function') {
+      window.plausible(name, props ? { props } : undefined);
+    }
+  }, { capture: true });
+</script>
