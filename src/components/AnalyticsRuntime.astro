@@ -1,16 +1,27 @@
 ---
 /* 外部importなし：インラインで確実に発火させる */
+const provider = (import.meta.env.PUBLIC_ANALYTICS_PROVIDER ?? 'none').toLowerCase();
+const domain = (import.meta.env.PUBLIC_ANALYTICS_DOMAIN ?? '').trim();
+const analyticsEnabled = provider === 'plausible' && Boolean(domain);
 ---
 <script>
-  document.addEventListener('click', (e) => {
-    const t = e.target && e.target.closest && e.target.closest('[data-analytics]');
-    if (!t) return;
-    const name = t.getAttribute('data-analytics');
-    if (!name) return;
-    const raw = t.getAttribute('data-analytics-payload');
-    let props; try { props = raw ? JSON.parse(raw) : undefined; } catch {}
-    if (typeof window.plausible === 'function') {
-      window.plausible(name, props ? { props } : undefined);
-    }
-  }, { capture: true });
+  const ANALYTICS_ENABLED = ${analyticsEnabled ? 'true' : 'false'};
+  const ANALYTICS_PROVIDER = ${JSON.stringify(provider)};
+  const ANALYTICS_DOMAIN = ${JSON.stringify(domain)};
+
+  if (ANALYTICS_ENABLED) {
+    document.addEventListener('click', (e) => {
+      const t = e.target && e.target.closest && e.target.closest('[data-analytics]');
+      if (!t) return;
+      const name = t.getAttribute('data-analytics');
+      if (!name) return;
+      const raw = t.getAttribute('data-analytics-payload');
+      let props; try { props = raw ? JSON.parse(raw) : undefined; } catch {}
+      if (ANALYTICS_PROVIDER !== 'plausible') return;
+      if (!ANALYTICS_DOMAIN) return;
+      if (typeof window.plausible === 'function') {
+        window.plausible(name, props ? { props } : undefined);
+      }
+    }, { capture: true });
+  }
 </script>
