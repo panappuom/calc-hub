@@ -1,4 +1,18 @@
 ---
-import runtimeUrl from '../scripts/analytics-runtime.ts?url';
+/* src/components/AnalyticsRuntime.astro */
 ---
-<script type="module" src={runtimeUrl}></script>
+<script>
+  document.addEventListener('click', (e) => {
+    const el = e.target && e.target.closest && e.target.closest('[data-analytics]');
+    if (!el) return;
+    const name = el.getAttribute('data-analytics');
+    if (!name) return;
+    const raw = el.getAttribute('data-analytics-payload');
+    let props;
+    try { props = raw ? JSON.parse(raw) : undefined; } catch {}
+    if (typeof window.plausible === 'function') {
+      window.plausible(name, props ? { props } : undefined);
+      console.log('[analytics]', name, props); // ← デバッグ用。慣れたら消してOK
+    }
+  });
+</script>
