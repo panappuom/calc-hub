@@ -244,6 +244,7 @@ const allList = [
   ...rakutenList.map(it => ({ ...it, store: '楽天' })),
   ...yahooList.map(it => ({ ...it, store: 'Yahoo' }))
 ].sort((a, b) => a.effective - b.effective);
+const recommendedSourceList = allList.length ? allList : list;
 const hasAllPoints = allList.some(it => Number(it.pointRate) > 0);
 const sections = [
   { name: '楽天', key: 'rakuten', list: rakutenList, status: data?.sourceStatus?.rakuten ?? 'fail', hasPoints: rakutenList.some(it => Number(it.pointRate) > 0) },
@@ -260,18 +261,14 @@ let bestRecommended = priceInfo?.bestRecommended ?? null;
 let bestRecommendedEvidence = typeof priceInfo?.bestRecommendedEvidence === 'string'
   ? priceInfo.bestRecommendedEvidence
   : null;
-if (!bestRecommended && list.length && skuInfo?.brandHints?.length) {
-  const cand = list.filter(it => {
-    const title = it.title?.toLowerCase() ?? '';
-    return skuInfo.brandHints.some(b => title.includes(b.toLowerCase()));
-  });
-  if (cand.length) {
-    bestRecommended = cand.reduce((min, it) => (it.effective < min.effective ? it : min), cand[0]);
-    bestRecommendedEvidence = 'ブランド一致OK';
-  }
-}
+
 if (bestRecommended) {
-  bestRecommended = { ...bestRecommended, effective: Number.isFinite(bestRecommended.effective) ? bestRecommended.effective : getEffectivePriceValue(bestRecommended) };
+  const normalizedEffective = Number.isFinite(bestRecommended.effective)
+    ? bestRecommended.effective
+    : getEffectivePriceValue(bestRecommended);
+  if (Number.isFinite(normalizedEffective)) {
+    bestRecommended = { ...bestRecommended, effective: normalizedEffective };
+  }
   if (!bestRecommendedEvidence) {
     const candEvidence =
       typeof bestRecommended.reason === 'string'
@@ -283,6 +280,37 @@ if (bestRecommended) {
       bestRecommendedEvidence = candEvidence;
     }
   }
+  const matchedTodayEntry = recommendedSourceList.find(it => equalsByPriceShop(it, bestRecommended));
+  if (matchedTodayEntry) {
+    bestRecommended = {
+      ...matchedTodayEntry,
+      effective: Number.isFinite(matchedTodayEntry.effective)
+        ? matchedTodayEntry.effective
+        : getEffectivePriceValue(matchedTodayEntry)
+    };
+  } else {
+    bestRecommended = null;
+    bestRecommendedEvidence = null;
+  }
+}
+
+if (!bestRecommended && recommendedSourceList.length && skuInfo?.brandHints?.length) {
+  const cand = recommendedSourceList.filter(it => {
+    const title = it.title?.toLowerCase() ?? '';
+    return skuInfo.brandHints.some(b => title.includes(b.toLowerCase()));
+  });
+  if (cand.length) {
+    bestRecommended = cand.reduce((min, it) => (it.effective < min.effective ? it : min), cand[0]);
+    bestRecommendedEvidence = 'ブランド一致OK';
+  }
+}
+if (bestRecommended) {
+  bestRecommended = {
+    ...bestRecommended,
+    effective: Number.isFinite(bestRecommended.effective)
+      ? bestRecommended.effective
+      : getEffectivePriceValue(bestRecommended)
+  };
 }
 const bestTodayCard = getPriceCardModel(bestToday, { prefix: '最安' });
 const bestRecommendedCard = getPriceCardModel(bestRecommended, { prefix: '推奨' });
